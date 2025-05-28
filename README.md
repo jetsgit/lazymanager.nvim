@@ -1,0 +1,216 @@
+# LazyManager
+
+A Neovim plugin for backing up and restoring Lazy.nvim plugin versions. LazyManager creates timestamped backups of your plugin commit hashes and allows you to restore specific plugins or your entire plugin set to previous versions.
+
+## Features
+
+- **Automatic Backups**: Automatically backs up plugin versions after every `:Lazy sync`
+- **Manual Backups**: Create backups on demand with `:LazyBackup`
+- **Selective Restore**: Restore specific plugins or all plugins from any backup
+- **Smart Restore Logic**: Automatically fetches commits if not available locally
+- **Timestamped Backups**: Each backup is named with a timestamp for easy identification
+- **Tab Completion**: Full tab completion for plugin names and backup files
+- **Confirmation Prompts**: Safe restore operations with user confirmation
+
+## Installation
+
+### Using Lazy.nvim
+
+Add LazyManager to your Lazy.nvim configuration:
+
+```lua
+{
+  "your-username/lazy-manager", -- Replace with actual repository
+  config = function()
+    require("lazy-manager").setup()
+  end,
+}
+```
+
+### Manual Installation
+
+1. Clone or download the LazyManager code
+2. Save it as `lazy-manager.lua` in your Neovim Lua directory
+3. Add to your `init.lua`:
+
+```lua
+require("lazy-manager").setup()
+```
+
+## Configuration
+
+LazyManager works out of the box with no configuration required. Simply call `setup()`:
+
+```lua
+require("lazy-manager").setup()
+```
+
+### Backup Directory
+
+Backups are stored in `~/.config/nvim/lazy-plugin-backups/` by default. The directory will be created automatically if it doesn't exist.
+
+You can access the backup directory path programmatically:
+
+```lua
+local backup_dir = require("lazy-manager").get_backup_dir()
+```
+
+## Commands
+
+### `:LazyBackup`
+
+Creates a timestamped backup of all currently installed plugin versions.
+
+```vim
+:LazyBackup
+```
+
+**Output**: `✅ Plugins backed up to: ~/.config/nvim/lazy-plugin-backups/2024-01-15-1430-lazy-plugin-backup.json`
+
+### `:LazyRestore`
+
+Restores plugins from backups with flexible syntax options:
+
+```vim
+" Restore all plugins from the most recent backup
+:LazyRestore
+
+" Restore specific plugins from the most recent backup
+:LazyRestore telescope.nvim nvim-treesitter
+
+" Restore all plugins from a specific backup file
+:LazyRestore 2024-01-15-1430-lazy-plugin-backup.json
+
+" Restore specific plugins from a specific backup file
+:LazyRestore telescope.nvim 2024-01-15-1430-lazy-plugin-backup.json
+```
+
+**Features**:
+- Tab completion for plugin names and backup files
+- User confirmation prompt before restoration
+- Automatic git fetch if commits aren't available locally
+- Clear progress messages during restoration
+
+### `:LazyListBackups`
+
+Lists all available backup files, sorted by date (most recent first):
+
+```vim
+:LazyListBackups
+```
+
+**Output**:
+```
+✅ Available backups (most recent first):
+1. 2024-01-15-1430-lazy-plugin-backup.json
+2. 2024-01-15-1200-lazy-plugin-backup.json
+3. 2024-01-14-0900-lazy-plugin-backup.json
+```
+
+### `:LazyRestoreFile` (Legacy)
+
+Alternative restore command for backwards compatibility:
+
+```vim
+" Restore all plugins from specified backup
+:LazyRestoreFile 2024-01-15-1430-lazy-plugin-backup.json
+
+" Restore specific plugins from specified backup
+:LazyRestoreFile 2024-01-15-1430-lazy-plugin-backup.json telescope.nvim
+```
+
+## How It Works
+
+### Backup Process
+
+1. **Plugin Detection**: Scans all installed Lazy.nvim plugins
+2. **Version Capture**: For each plugin, captures the current git commit hash (truncated to 12 characters)
+3. **Fallback Handling**: If git commit isn't available, uses the plugin's configured commit, version, or "latest"
+4. **JSON Storage**: Saves all plugin versions to a timestamped JSON file
+
+### Restore Process
+
+1. **Backup Selection**: Uses most recent backup unless a specific file is specified
+2. **Plugin Filtering**: Restores all plugins or only specified ones
+3. **User Confirmation**: Prompts for confirmation before making changes
+4. **Git Operations**: 
+   - Checks if target commit exists locally
+   - Fetches from remote if commit is missing
+   - Checks out the specific commit hash
+5. **Error Handling**: Provides clear error messages for failed operations
+
+### Automatic Backups
+
+LazyManager automatically creates backups whenever you run `:Lazy sync`. This happens through a Neovim autocmd that triggers 1 second after the sync completes, ensuring all changes are captured.
+
+## Backup File Format
+
+Backup files are JSON objects mapping plugin names to commit hashes:
+
+```json
+{
+  "telescope.nvim": "abc123def456",
+  "nvim-treesitter": "def456ghi789",
+  "lazy.nvim": "ghi789jkl012"
+}
+```
+
+## Use Cases
+
+### Plugin Update Recovery
+
+If a plugin update breaks your setup:
+
+1. Check what backups are available: `:LazyListBackups`
+2. Restore the problematic plugin: `:LazyRestore plugin-name`
+3. Restart Neovim
+
+### Full Environment Rollback
+
+To revert your entire plugin environment:
+
+1. Find the backup from before the issues: `:LazyListBackups`
+2. Restore all plugins: `:LazyRestore backup-filename.json`
+3. Restart Neovim
+
+### Selective Plugin Management
+
+To test different versions of specific plugins:
+
+1. Create a backup before experimenting: `:LazyBackup`
+2. Update or modify plugins as needed
+3. Restore specific plugins if needed: `:LazyRestore plugin1 plugin2`
+
+## Troubleshooting
+
+### "Plugin not installed" Error
+
+This means the plugin exists in the backup but isn't currently installed via Lazy.nvim. Install the plugin first, then restore its version.
+
+### "Commit may not exist" Error
+
+This can happen if:
+- The backup contains invalid commit hashes (e.g., from test data)
+- The plugin's git repository has been force-pushed or rebased
+- The plugin has been moved to a different repository
+
+**Solution**: Check the plugin's git history or install the latest version.
+
+### Permission Errors
+
+Ensure Neovim has write access to `~/.config/nvim/lazy-plugin-backups/`.
+
+## Requirements
+
+- Neovim with Lua support
+- Lazy.nvim plugin manager
+- Git (for plugin version detection and restoration)
+- Unix-like system (Linux, macOS) for shell commands
+
+## License
+
+[Add your license here]
+
+## Contributing
+
+[Add contribution guidelines here]
