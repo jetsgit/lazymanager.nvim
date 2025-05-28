@@ -17,6 +17,45 @@ end
 -- Store most recent backup file path for restore function
 local latest_backup_file = ''
 
+-- Helper function to pretty-print a Lua table as indented JSON
+local function json_pretty(tbl, indent)
+  indent = indent or 2
+  local function quote(str)
+    return '"' .. tostring(str):gsub('"', '\\"') .. '"'
+  end
+  local function is_array(t)
+    local i = 0
+    for _ in pairs(t) do
+      i = i + 1ls
+      if t[i] == nil then return false end
+    end
+    return true
+  end
+  local function dump(t, level)
+    level = level or 0
+    local pad = string.rep(' ', level * indent)
+    if type(t) ~= 'table' then
+      if type(t) == 'string' then
+        return quote(t)
+      else
+        return tostring(t)
+      end
+    end
+    local isarr = is_array(t)
+    local items = {}
+    for k, v in pairs(t) do
+      local key = isarr and '' or (quote(k) .. ': ')
+      table.insert(items, pad .. string.rep(' ', indent) .. key .. dump(v, level + 1))
+    end
+    if isarr then
+      return '[\n' .. table.concat(items, ',\n') .. '\n' .. pad .. ']'
+    else
+      return '{\n' .. table.concat(items, ',\n') .. '\n' .. pad .. '}'
+    end
+  end
+  return dump(tbl, 0)
+end
+
 function LazyManager.backup_plugins()
   local lazy = require 'lazy'
   local plugin_versions = {}
@@ -41,7 +80,7 @@ function LazyManager.backup_plugins()
 
   -- Use timestamped backup file
   latest_backup_file = get_backup_filename()
-  local json = vim.fn.json_encode(plugin_versions)
+  local json = json_pretty(plugin_versions, 2)
   local file = io.open(latest_backup_file, 'w')
 
   if file then
