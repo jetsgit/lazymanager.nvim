@@ -217,53 +217,81 @@ function LazyManager.get_backup_dir()
   return backup_dir
 end
 
+function LazyManager.telescope_restore(callback)
+  local ok, telescope = pcall(require, 'telescope.builtin')
+  if not ok then
+    vim.api.nvim_err_writeln('❌ Telescope is not installed!')
+    return
+  end
+  local files = vim.fn.glob(backup_dir .. '*.json', true, true)
+  if #files == 0 then
+    vim.api.nvim_err_writeln('❌ No backups found in ' .. backup_dir)
+    return
+  end
+  table.sort(files, function(a, b) return a > b end)
+  telescope.find_files({
+    prompt_title = 'Select Lazy.nvim Backup to Restore',
+    cwd = backup_dir,
+    find_command = {'ls'},
+    attach_mappings = function(_, _)
+      local actions = require('telescope.actions')
+      local action_state = require('telescope.actions.state')
+      actions.select_default:replace(function(prompt_bufnr)
+        actions.close(prompt_bufnr)
+        local selection = action_state.get_selected_entry()
+        if selection and selection[1] then
+          if callback then
+            callback(selection[1])
+          else
+            LazyManager.restore_plugins({}, selection[1])
+          end
+        end
+      end)
+      return true
+    end,
+    sorter = require('telescope.sorters').get_fuzzy_file(),
+  })
+end
+
 function LazyManager.setup(opts)
   -- Register commands
   vim.api.nvim_create_user_command('LazyBackup', LazyManager.backup_plugins, {})
 
   vim.api.nvim_create_user_command('LazyRestore', function(input)
-    -- Parse arguments to support multiple syntax options:
-    -- :LazyRestore                                    -> restore all from latest
-    -- :LazyRestore plugin1 plugin2                   -> restore specific plugins from latest
-    -- :LazyRestore plugin1 backup.json               -> restore plugin1 from backup.json
-    -- :LazyRestore backup.json                        -> restore all from backup.json
     local args = {}
     local backup_file = nil
 
     if input.args and input.args ~= '' then
       args = vim.split(input.args, ' ')
-
-      -- Check if last argument is a backup file (ends with .json)
       if #args > 0 and args[#args]:match '%.json$' then
-        backup_file = table.remove(args) -- Remove backup file from plugin list
+        backup_file = table.remove(args)
       end
-
-      -- If only argument was a backup file, we're restoring all plugins from that file
       if #args == 0 and backup_file then
         LazyManager.restore_plugins({}, backup_file)
       else
-        -- Either specific plugins from latest backup, or specific plugins from specified backup
         LazyManager.restore_plugins(args, backup_file)
       end
     else
-      -- No arguments - restore all from latest backup
-      LazyManager.restore_plugins {}
+      -- No arguments: use Telescope for interactive selection if available
+      local ok, _ = pcall(require, 'telescope.builtin')
+      if ok then
+        LazyManager.telescope_restore(function(selected_backup)
+          LazyManager.restore_plugins({}, selected_backup)
+        end)
+      else
+        LazyManager.restore_plugins({})
+      end
     end
   end, {
     nargs = '*',
     complete = function(ArgLead, CmdLine, CursorPos)
-      -- Smart completion: suggest plugin names first, then backup files
       local lazy = require 'lazy'
       local completions = {}
-
-      -- Get all installed plugin names
       for name, _ in pairs(lazy.plugins()) do
         if name:find(ArgLead, 1, true) == 1 then
           table.insert(completions, name)
         end
       end
-
-      -- Also suggest backup files
       local files = vim.fn.glob(backup_dir .. '*.json', true, true)
       for _, file in ipairs(files) do
         local basename = vim.fn.fnamemodify(file, ':t')
@@ -271,7 +299,6 @@ function LazyManager.setup(opts)
           table.insert(completions, basename)
         end
       end
-
       return completions
     end,
   })
