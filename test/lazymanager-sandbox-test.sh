@@ -485,6 +485,9 @@ local lazy_manager = require('lazymanager')
 lazy_manager.setup()
 
 -- Add helpful keymaps for testing
+vim.g.mapleader = " "
+vim.g.maplocalleader = " "
+
 vim.keymap.set('n', '<leader>lb', '<cmd>LazyBackup<cr>', { desc = 'Backup plugins' })
 vim.keymap.set('n', '<leader>lr', '<cmd>LazyRestore<cr>', { desc = 'Restore plugins' })
 vim.keymap.set('n', '<leader>ll', '<cmd>LazyListBackups<cr>', { desc = 'List backups' })
