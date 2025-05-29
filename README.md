@@ -20,9 +20,9 @@ Add LazyManager to your Lazy.nvim configuration:
 
 ```lua
 {
-  "your-username/lazy-manager", -- Replace with actual repository
+  "jetsgit/lazymanager.nvim",
   config = function()
-    require("lazy-manager").setup()
+    require("lazymanager").setup()
   end,
 }
 ```
