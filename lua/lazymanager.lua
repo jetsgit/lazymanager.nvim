@@ -359,11 +359,15 @@ function LazyManager.setup(opts)
 		complete = function(ArgLead, CmdLine, CursorPos)
 			local lazy = require("lazy")
 			local completions = {}
-			for name, _ in pairs(lazy.plugins()) do
-				if name:find(ArgLead, 1, true) == 1 then
+
+			-- Fix: lazy.plugins() returns an array of plugin objects, not a hash table
+			for _, plugin in pairs(lazy.plugins()) do
+				local name = plugin.name -- Get the actual plugin name from the plugin object
+				if name and name:find(ArgLead, 1, true) == 1 then
 					table.insert(completions, name)
 				end
 			end
+
 			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 			for _, file in ipairs(files) do
 				local basename = vim.fn.fnamemodify(file, ":t")
@@ -371,6 +375,7 @@ function LazyManager.setup(opts)
 					table.insert(completions, basename)
 				end
 			end
+
 			return completions
 		end,
 	})
