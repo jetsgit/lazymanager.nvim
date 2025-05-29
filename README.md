@@ -39,10 +39,33 @@ require("lazy-manager").setup()
 
 ## Configuration
 
-LazyManager works out of the box with no configuration required. Simply call `setup()`:
-
+Recommended LazyManager configuration.
+This will give you fuzzy finding capabilities with Telescope and FZF for plugin management.
 ```lua
-require("lazy-manager").setup()
+require("lazy").setup({
+  {
+    'jetsgit/lazymanager.nvim',
+    dependencies = {
+      {
+        'nvim-telescope/telescope.nvim',
+        dependencies = {
+          'nvim-lua/plenary.nvim',
+          {
+            'nvim-telescope/telescope-fzf-native.nvim',
+            build = 'make', -- Compiles the C code for optimal fuzzy matching performance
+          },
+        },
+        config = function()
+          require('telescope').setup {}
+          require('telescope').load_extension 'fzf'
+        end,
+      },
+    },
+    config = function()
+      require('lazymanager').setup()
+    end,
+  },
+})
 ```
 
 ### Backup Directory
