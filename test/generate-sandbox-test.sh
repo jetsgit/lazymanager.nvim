@@ -38,7 +38,7 @@ TEMP_FILE=$(mktemp)
 
 # Use awk to process the file - searches through ALL lines for the pattern
 awk '
-/-- Production-path/ {
+/-- Lazymanager-path/ {
     print $0  # Print the comment line wherever found
     getline   # Read and skip the next line (the one to be replaced)
     print "local backup_dir = vim.fn.expand(\"~\") .. \"/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/\""

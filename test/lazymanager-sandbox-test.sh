@@ -25,7 +25,7 @@ cat > "$NVIM_CONFIG_DIR/lua/lazymanager.lua" <<'EOF'
 -- Define LazyManager as a module
 LazyManager = {}
 
--- Production-path
+-- Lazymanager-path
 local backup_dir = vim.fn.expand("~") .. "/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/"
 
 if vim.fn.isdirectory(backup_dir) == 0 then
