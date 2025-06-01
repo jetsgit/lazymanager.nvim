@@ -184,8 +184,14 @@ function LazyManager.restore_plugins(args, backup_path)
 			local plugin_name = plugin_info.name
 			local target_version = plugin_info.version
 
-			-- Find the plugin directory
-			local plugin_data = lazy.plugins()[plugin_name]
+			-- Use Lazy.nvim's plugin metadata to get the actual directory (array search for sandbox compatibility)
+			local plugin_data = nil
+			for _, p in pairs(lazy.plugins()) do
+				if p.name == plugin_name then
+					plugin_data = p
+					break
+				end
+			end
 			if not plugin_data then
 				vim.api.nvim_err_writeln("❌ Plugin not installed: " .. plugin_name)
 				goto continue
@@ -293,6 +299,7 @@ function LazyManager.telescope_restore(callback)
 		vim.api.nvim_err_writeln("❌ Telescope is not installed!")
 		return
 	end
+	-- Only show backups in the sandbox backup_dir
 	local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 	if #files == 0 then
 		vim.api.nvim_err_writeln("❌ No backups found in " .. backup_dir)
@@ -360,9 +367,9 @@ function LazyManager.setup(opts)
 			local lazy = require("lazy")
 			local completions = {}
 
-			-- Fix: lazy.plugins() returns an array of plugin objects, not a hash table
+			-- Only complete plugins that are installed in the sandbox
 			for _, plugin in pairs(lazy.plugins()) do
-				local name = plugin.name -- Get the actual plugin name from the plugin object
+				local name = plugin.name
 				if name and name:find(ArgLead, 1, true) == 1 then
 					table.insert(completions, name)
 				end
@@ -390,7 +397,7 @@ function LazyManager.setup(opts)
 	end, {
 		nargs = "+",
 		complete = function(ArgLead, CmdLine, CursorPos)
-			-- Custom completion that shows backup files without full path
+			-- Only complete backup files in the sandbox
 			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 			local completions = {}
 			for _, file in ipairs(files) do
