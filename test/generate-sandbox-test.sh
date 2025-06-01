@@ -33,13 +33,107 @@ mkdir -p "$SANDBOX_DIR/.local/share/nvim"
 # Embed the latest lazymanager.lua as the sandbox module
 cat > "$NVIM_CONFIG_DIR/lua/lazymanager.lua" <<'EOF'
 HEADER
+# Create a temporary file for editing
+TEMP_FILE=$(mktemp)
 
-cat "$PROD_LUA" >> "$OUT_SCRIPT"
+# Use awk to process the file - searches through ALL lines for the pattern
+awk '
+/-- Production-path/ {
+    print $0  # Print the comment line wherever found
+    getline   # Read and skip the next line (the one to be replaced)
+    print "local backup_dir = vim.fn.expand(\"~\") .. \"/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/\""
+    next
+}
+{ print $0 }  # Print all other lines unchanged
+' "$PROD_LUA" > "$TEMP_FILE"
+
+echo "File processed: $PROD_LUA"
+echo "TEMP_FILE contains the modified backup_dir for sandbox."
+
+cat  $TEMP_FILE >> "$OUT_SCRIPT"
 echo -e '\nEOF' >> "$OUT_SCRIPT"
 
 cat >> "$OUT_SCRIPT" <<'FOOTER'
 # ...existing code for the rest of the test script (init.lua, sample backups, etc.)...
 # You can append the rest of your test script here as needed.
+
+# Create basic init.lua for Neovim
+cat > "$NVIM_CONFIG_DIR/init.lua" << 'EOF'
+-- Minimal Neovim config for testing LazyManager
+-- SANDBOXED: All paths use the sandbox environment
+
+-- Set up sandbox-specific paths
+local sandbox_data = vim.fn.expand('~') .. '/nvim-lazy-manager-test/.local/share/nvim'
+local sandbox_config = vim.fn.expand('~') .. '/nvim-lazy-manager-test/.config/nvim'
+local backup_dir = sandbox_config .. '/lazy-plugin-backups'
+
+-- Override stdpath to use sandbox
+local original_stdpath = vim.fn.stdpath
+vim.fn.stdpath = function(what)
+  if what == "data" then
+    return sandbox_data
+  elseif what == "config" then
+    return sandbox_config
+  else
+    return original_stdpath(what)
+  end
+end
+
+-- Bootstrap lazy.nvim in sandbox
+local lazypath = sandbox_data .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+  print("📦 Installing lazy.nvim to sandbox...")
+  vim.fn.system({
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git",
+    "--branch=stable",
+    lazypath,
+  })
+end
+vim.opt.rtp:prepend(lazypath)
+
+-- Setup lazy with test plugins (all installed to sandbox)
+require("lazy").setup({
+  -- Test plugins (lightweight and safe)
+  "nvim-lua/plenary.nvim",
+  "folke/which-key.nvim",
+  {
+    "nvim-lualine/lualine.nvim",
+    dependencies = { "nvim-tree/nvim-web-devicons" }
+  },
+  "lewis6991/gitsigns.nvim",
+  "windwp/nvim-autopairs",
+  {
+      "nvim-telescope/telescope.nvim",
+      dependencies = {
+        "nvim-lua/plenary.nvim",
+        {
+          "nvim-telescope/telescope-fzf-native.nvim",
+          build = "make", -- Compiles the C code for optimal fuzzy matching performance
+        },
+      },
+      config = function()
+        require("telescope").setup({})
+        require("telescope").load_extension("fzf")
+      end,
+    },
+  }, {
+  -- Lazy configuration - all sandboxed
+  root = sandbox_data .. "/lazy_plugins",
+  lockfile = sandbox_config .. "/lazy-lock.json",
+  performance = {
+    cache = {
+      enabled = true,
+      path = sandbox_data .. "/lazy/cache",
+    },
+  },
+})
+
+-- Load LazyManager after lazy.nvim is set up
+local lazy_manager = require('lazymanager')
+lazy_manager.setup()
 
 -- Add helpful keymaps for testing
 vim.g.mapleader = " "
@@ -62,8 +156,9 @@ print("  <leader>lb - :LazyBackup")
 print("  <leader>lr - :LazyRestore") 
 print("  <leader>ll - :LazyListBackups")
 print("")
-print("📁 Backup directory: " .. lazy_manager.get_backup_dir())
-print("🔌 Plugin directory: " .. lazy_manager.get_plugin_root())
+print("📁 Backup directory: " .. backup_dir)
+print("🔌 Plugin directory: " .. sandbox_data .. "/lazy_plugins")
+EOF
 
 
 # Create the backup directory with sample backup files
