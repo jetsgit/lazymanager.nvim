@@ -12,7 +12,8 @@ function LazyManager.debug_paths()
 	print("")
 	print("📦 Installed plugins:")
 
-	for name, plugin in pairs(lazy.plugins()) do
+	for _, plugin in pairs(lazy.plugins()) do
+		local name = plugin.name
 		local sandboxed_dir = plugin_root .. "/" .. name
 		local actual_dir = plugin.dir or "N/A"
 		local exists = vim.fn.isdirectory(sandboxed_dir) == 1 and "✅" or "❌"
