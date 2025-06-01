@@ -1,23 +1,6 @@
 #!/bin/bash
 # generate-sandbox-test.sh
 # Generates lazymanager-sandbox-test.sh using the latest lazymanager.lua as the embedded module.
-
-set -e
-
-PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanager.lua}"
-OUT_SCRIPT="${2:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/test/lazymanager-sandbox-test.sh}"
-
-cat > "$OUT_SCRIPT" <<'HEADER'
-#!/bin/bash
-
-# LazyManager Testing Sandbox Setup
-# This script creates a safe testing environment for the LazyManager plugin
-
-set -e
-
-SANDBOX_DIR="$HOME/nvim-lazy-manager-test"
-NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
-
 echo "🧪 Setting up LazyManager testing sandbox..."
 
 # Clean up any existing sandbox
@@ -26,13 +9,45 @@ if [ -d "$SANDBOX_DIR" ]; then
   rm -rf "$SANDBOX_DIR"
 fi
 
+set -e
+
+PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanager.lua}"
+OUT_SCRIPT="${2:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/test/lazymanager-sandbox-test.sh}"
+SANDBOX_DIR="$HOME/nvim-lazy-manager-test"
+NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
+LAZY_MANAGER_TEST="$NVIM_CONFIG_DIR/lua/lazymanager.lua"
+
+NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
+
+# Attempt to create directory
+if mkdir -p "$NVIM_CONFIG_DIR/lua"; then
+    echo -e "\033[1;32m✅ SUCCESS: Created $NVIM_CONFIG_DIR\033[0m"  # Big green checkmark
+else
+    echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"  # Big red X
+fi
+
+
+
 # Create sandbox directory structure
-mkdir -p "$NVIM_CONFIG_DIR/lua"
+# mkdir -p "$NVIM_CONFIG_DIR/lua"
+# CONFIG_DIR="$NVIM_CONFIG_DIR/lua/"
+# touch "$CONFIG_DIR/lazymanager.lua"
 mkdir -p "$SANDBOX_DIR/.local/share/nvim"
 
-# Embed the latest lazymanager.lua as the sandbox module
-cat > "$NVIM_CONFIG_DIR/lua/lazymanager.lua" <<'EOF'
-HEADER
+
+
+# cat > "$OUT_SCRIPT" << "HEADER"
+#!/bin/bash
+
+# LazyManager Testing Sandbox Setup
+# This script creates a safe testing environment for the LazyManager plugin
+
+set -e
+
+
+
+# HEADER
+
 # Create a temporary file for editing
 TEMP_FILE=$(mktemp)
 
@@ -50,12 +65,8 @@ awk '
 echo "File processed: $PROD_LUA"
 echo "TEMP_FILE contains the modified backup_dir for sandbox."
 
-cat  $TEMP_FILE >> "$OUT_SCRIPT"
-echo -e '\nEOF' >> "$OUT_SCRIPT"
+cat $TEMP_FILE > "$LAZY_MANAGER_TEST"
 
-cat >> "$OUT_SCRIPT" <<'FOOTER'
-# ...existing code for the rest of the test script (init.lua, sample backups, etc.)...
-# You can append the rest of your test script here as needed.
 
 # Create basic init.lua for Neovim
 cat > "$NVIM_CONFIG_DIR/init.lua" << 'EOF'
@@ -156,10 +167,12 @@ print("  <leader>lb - :LazyBackup")
 print("  <leader>lr - :LazyRestore") 
 print("  <leader>ll - :LazyListBackups")
 print("")
-print("📁 Backup directory: " .. backup_dir)
-print("🔌 Plugin directory: " .. sandbox_data .. "/lazy_plugins")
+
 EOF
 
+# cat >> "$OUT_SCRIPT" << "FOOTER"
+# ...existing code for the rest of the test script (init.lua, sample backups, etc.)...
+# You can append the rest of your test script here as needed.
 
 # Create the backup directory with sample backup files
 mkdir -p "$NVIM_CONFIG_DIR/lazy-plugin-backups"
@@ -199,7 +212,7 @@ cat > "$NVIM_CONFIG_DIR/lazy-plugin-backups/2024-01-17-1200-lazy-plugin-backup.j
 EOF
 
 # Create test script with proper environment setup
-cat > "$SANDBOX_DIR/test_lazy_manager.sh" << 'EOF'
+cat > "$SANDBOX_DIR/test_lazy_manager.sh" << "EOF"
 #!/bin/bash
 
 echo "🧪 LazyManager Test Script"
@@ -329,6 +342,7 @@ fi
 EOF
 
 chmod +x "$SANDBOX_DIR/status.sh"
+# FOOTER
 
 echo "✅ LazyManager testing sandbox created at: $SANDBOX_DIR"
 echo ""
@@ -348,8 +362,5 @@ echo "   ✓ Sandboxed paths (won't affect your real nvim config)"
 echo "   ✓ Sample backup files for testing"
 echo "   ✓ Safe test plugins (plenary, which-key, lualine, etc.)"
 echo "   ✓ Verification and status utilities"
-echo ""
 
-FOOTER
-
-echo "Generated $OUT_SCRIPT with the latest lazymanager.lua embedded."
+# echo "Generated $OUT_SCRIPT with the latest lazymanager.lua embedded."
