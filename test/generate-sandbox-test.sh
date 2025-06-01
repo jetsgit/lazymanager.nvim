@@ -15,33 +15,40 @@ PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanag
 SANDBOX_DIR="$HOME/nvim-lazy-manager-test"
 NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
 LAZY_MANAGER_TEST="$NVIM_CONFIG_DIR/lua/lazymanager.lua"
-
 NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
 
-# Attempt to create directory
 if mkdir -p "$NVIM_CONFIG_DIR/lua"; then
     echo -e "\033[1;32m✅ SUCCESS: Created $NVIM_CONFIG_DIR\033[0m"  # Big green checkmark
 else
     echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"  # Big red X
 fi
 
-mkdir -p "$SANDBOX_DIR/.local/share/nvim"
+if mkdir -p "$SANDBOX_DIR/.local/share/nvim"; then
+    echo -e "\033[1;32m✅ SUCCESS: Created $SANDBOX_DIR/.local/share/nvim\033[0m"  # Big green checkmark
+else
+    echo -e "\033[1;31m❌ ERROR: Failed to create $SANDBOX_DIR/.local/share/nvim\033[0m"  # Big red X
+fi
 
 set -e
 
-# Create a temporary file for editing
 TEMP_FILE=$(mktemp)
 
-# Use awk to process the file - searches through ALL lines for the pattern
 awk '
 /-- Lazymanager-path/ {
     print $0  # Print the comment line wherever found
     getline   # Read and skip the next line (the one to be replaced)
-    print "local backup_dir = vim.fn.expand(\"~\") .. \"/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/\""
+    print "-- SANDBOXED: Use sandbox-specific paths"
+    # Read and print debug-paths.lua before continuing
+    while ((getline line < "debug-paths.lua") > 0) {
+        print line
+    }
+    close("debug-paths.lua")
     next
 }
 { print $0 }  # Print all other lines unchanged
 ' "$PROD_LUA" > "$TEMP_FILE"
+
+
 
 echo "File processed: $PROD_LUA"
 echo "TEMP_FILE contains the modified backup_dir for sandbox."
