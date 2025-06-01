@@ -30,11 +30,11 @@ Add LazyManager to your Lazy.nvim configuration:
 ### Manual Installation
 
 1. Clone or download the LazyManager code
-2. Save it as `lazy-manager.lua` in your Neovim Lua directory
+2. Save it as `lazymanager.lua` in your Neovim Lua directory
 3. Add to your `init.lua`:
 
 ```lua
-require("lazy-manager").setup()
+require("lazymanager").setup()
 ```
 
 ## Configuration
@@ -75,7 +75,7 @@ Backups are stored in `~/.config/nvim/lazy-plugin-backups/` by default. The dire
 You can access the backup directory path programmatically:
 
 ```lua
-local backup_dir = require("lazy-manager").get_backup_dir()
+local backup_dir = require("lazymanager").get_backup_dir()
 ```
 
 ## Commands
