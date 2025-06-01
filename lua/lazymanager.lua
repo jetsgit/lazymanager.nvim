@@ -1,7 +1,7 @@
 -- Define LazyManager as a module
 LazyManager = {}
 
--- Production paths
+-- Production-path
 local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
 
 if vim.fn.isdirectory(backup_dir) == 0 then
