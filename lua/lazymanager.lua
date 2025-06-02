@@ -456,12 +456,42 @@ function LazyManager.setup(opts)
 	-- Keep LazyRestoreFile as legacy command for backwards compatibility
 	vim.api.nvim_create_user_command("LazyRestoreFile", function(input)
 		local args = vim.split(input.args, " ")
-		local file_path = table.remove(args, 1)
-		LazyManager.restore_plugins(args, file_path)
+		local file_path = args[1]
+		if not file_path or file_path == "" then
+			-- If Telescope is available, open a fuzzy picker for backup files
+			if pcall(require, "telescope.builtin") then
+				local files = vim.fn.glob(backup_dir .. "*.json", true, true)
+				if #files == 0 then
+					vim.api.nvim_err_writeln("❌ No backups found in " .. backup_dir)
+					return
+				end
+				require("telescope.pickers").new({}, {
+					prompt_title = "Select Lazy.nvim Backup to Restore (ALL plugins)",
+					finder = require("telescope.finders").new_table({ results = files }),
+					sorter = require("telescope.config").values.generic_sorter({}),
+					attach_mappings = function(_, _)
+						local actions = require("telescope.actions")
+						local action_state = require("telescope.actions.state")
+						actions.select_default:replace(function(prompt_bufnr)
+							actions.close(prompt_bufnr)
+							local selection = action_state.get_selected_entry()
+							if selection and selection[1] then
+								LazyManager.restore_file_full(selection[1])
+							end
+						end)
+						return true
+					end,
+				}):find()
+				return
+			else
+				vim.api.nvim_err_writeln("❌ Please specify a backup file.")
+				return
+			end
+		end
+		LazyManager.restore_file_full(file_path)
 	end, {
-		nargs = "+",
+		nargs = "?",
 		complete = function(ArgLead, CmdLine, CursorPos)
-			-- Only complete backup files in the sandbox
 			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 			local completions = {}
 			for _, file in ipairs(files) do
@@ -552,6 +582,99 @@ function LazyManager.telescope_plugin_backups(plugin_name)
 		table.sort(matching, function(a, b) return a.file > b.file end)
 		LazyManager.restore_plugins({plugin_name}, matching[1].file)
 	end
+end
+
+-- Restore all plugins from a specific backup file (no plugin filtering)
+function LazyManager.restore_file_full(backup_path)
+	if not backup_path or backup_path == "" then
+		vim.api.nvim_err_writeln("❌ Please specify a backup file.")
+		return
+	end
+	local backup_to_use = backup_path
+	if not backup_to_use:match("^/") and not backup_to_use:match("^~") then
+		backup_to_use = backup_dir .. backup_to_use
+	end
+	local file = io.open(backup_to_use, "r")
+	if not file then
+		vim.api.nvim_err_writeln("❌ Error: No backup file found at " .. backup_to_use)
+		return
+	end
+	local content = file:read("*a")
+	file:close()
+	local ok, plugin_versions = pcall(vim.fn.json_decode, content)
+	if not ok then
+		vim.api.nvim_err_writeln("❌ Error: Invalid JSON in backup file")
+		return
+	end
+	local backup_filename = vim.fn.fnamemodify(backup_to_use, ":t")
+	local prompt_msg = "Are you sure you want to restore ALL plugins from " .. backup_filename .. "? (y/n): "
+	vim.ui.input({ prompt = prompt_msg }, function(input)
+		if not input or input:lower() ~= "y" then
+			print("Restore canceled.")
+			return
+		end
+		local lazy = require("lazy")
+		local plugins_to_restore = {}
+		for name, version in pairs(plugin_versions) do
+			table.insert(plugins_to_restore, { name = name, version = version })
+		end
+		print("🔄 Restoring all " .. #plugins_to_restore .. " plugins from backup...")
+		for _, plugin_info in ipairs(plugins_to_restore) do
+			local plugin_name = plugin_info.name
+			local target_version = plugin_info.version
+			local plugin_data = nil
+			for _, p in pairs(lazy.plugins()) do
+				if p.name == plugin_name then
+					plugin_data = p
+					break
+				end
+			end
+			if not plugin_data then
+				vim.api.nvim_err_writeln("❌ Plugin not installed: " .. plugin_name)
+				break
+			end
+			local plugin_dir = plugin_data.dir
+			if vim.fn.isdirectory(plugin_dir) == 1 then
+				local check_cmd = string.format(
+					"cd %s && git cat-file -e %s",
+					vim.fn.shellescape(plugin_dir),
+					vim.fn.shellescape(target_version)
+				)
+				vim.fn.system(check_cmd)
+				if vim.v.shell_error == 0 then
+					local git_cmd = string.format(
+						"cd %s && git checkout %s",
+						vim.fn.shellescape(plugin_dir),
+						vim.fn.shellescape(target_version)
+					)
+					local result = vim.fn.system(git_cmd)
+					if vim.v.shell_error == 0 then
+						print("✅ Restored plugin: " .. plugin_name .. " to " .. target_version:sub(1, 7))
+					else
+						vim.api.nvim_err_writeln("❌ Failed to restore " .. plugin_name .. ": " .. result)
+					end
+				else
+					print("⚠️  Commit " .. target_version:sub(1, 7) .. " not found locally for " .. plugin_name .. ", attempting to fetch...")
+					local fetch_cmd = string.format("cd %s && git fetch --all", vim.fn.shellescape(plugin_dir))
+					vim.fn.system(fetch_cmd)
+					local git_cmd = string.format(
+						"cd %s && git checkout %s",
+						vim.fn.shellescape(plugin_dir),
+						vim.fn.shellescape(target_version)
+					)
+					local result = vim.fn.system(git_cmd)
+					if vim.v.shell_error == 0 then
+						print("✅ Restored plugin: " .. plugin_name .. " to " .. target_version:sub(1, 7) .. " (after fetch)")
+					else
+						vim.api.nvim_err_writeln("❌ Failed to restore " .. plugin_name .. " even after fetch. Commit may not exist: " .. target_version:sub(1, 7))
+					end
+				end
+			else
+				vim.api.nvim_err_writeln("❌ Plugin directory not found: " .. plugin_name .. " at " .. plugin_dir)
+			end
+		end
+		print("🔄 Restart Neovim to ensure all changes take effect.")
+	end)
 end
 
 return LazyManager
