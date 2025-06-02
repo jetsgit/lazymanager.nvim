@@ -1,0 +1,8 @@
+return {
+	default = {
+		ROOT = { "test/" },
+		pattern = "test_.*%.lua$",
+		lpath = "test/?.lua;test/?/init.lua", -- helps with require paths
+		verbose = true,
+	},
+}
