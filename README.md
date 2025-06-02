@@ -67,6 +67,14 @@ require("lazy").setup({
   },
 })
 ```
+## Suggested Key Bindings
+```lua
+vim.keymap.set('n', '<leader>lb', '<cmd>LazyBackup<cr>', { desc = 'Backup plugins' })
+vim.keymap.set('n', '<leader>lr', '<cmd>LazyRestore<cr>', { desc = 'Restore plugins' })
+vim.keymap.set('n', '<leader>ll', '<cmd>LazyListBackups<cr>', { desc = 'List backups' })
+vim.keymap.set('n', '<leader>la', '<cmd>LazyRestoreFile<cr>', { desc = 'Restore entire backup file' })
+```
+...more, better, faster, stronger, and more powerful than ever before!
 
 ### Backup Directory
 
