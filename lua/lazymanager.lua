@@ -4,10 +4,6 @@ LazyManager = {}
 -- Lazymanager-path
 local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
 
-if vim.fn.isdirectory(backup_dir) == 0 then
-	vim.fn.mkdir(backup_dir, "p")
-end
-
 -- Generate timestamp-based backup filename
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
@@ -15,7 +11,7 @@ local function get_backup_filename()
 end
 
 -- Store most recent backup file path for restore function
-local latest_backup_file = ""
+LazyManager.latest_backup_file = ""
 
 -- Helper function to pretty-print a Lua table as indented JSON
 local function json_pretty(tbl, indent)
@@ -59,6 +55,10 @@ local function json_pretty(tbl, indent)
 end
 
 function LazyManager.backup_plugins()
+	-- Ensure backup directory exists
+	if vim.fn.isdirectory(backup_dir) == 0 then
+		vim.fn.mkdir(backup_dir, "p")
+	end
 	local lazy = require("lazy")
 	local plugin_versions = {}
 
@@ -81,27 +81,31 @@ function LazyManager.backup_plugins()
 	end
 
 	-- Use timestamped backup file
-	latest_backup_file = get_backup_filename()
+	LazyManager.latest_backup_file = get_backup_filename()
 	local json = json_pretty(plugin_versions, 2)
-	local file = io.open(latest_backup_file, "w")
+	local file = io.open(LazyManager.latest_backup_file, "w")
 
 	if file then
 		file:write(json)
 		file:close()
-		print("✅ Plugins backed up to: " .. latest_backup_file)
+		print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
 	else
 		vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
 	end
 end
 
 function LazyManager.restore_plugins(args, backup_path)
+	-- Ensure backup directory exists
+	if vim.fn.isdirectory(backup_dir) == 0 then
+		vim.fn.mkdir(backup_dir, "p")
+	end
 	local backup_to_use = backup_path
 
 	-- If no specific backup path is provided
 	if not backup_to_use then
 		-- First try to use the latest backup from current session
-		if latest_backup_file ~= "" then
-			backup_to_use = latest_backup_file
+		if LazyManager.latest_backup_file ~= "" then
+			backup_to_use = LazyManager.latest_backup_file
 		else
 			-- Otherwise, find the most recent backup file in the backup directory
 			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
@@ -181,88 +185,88 @@ function LazyManager.restore_plugins(args, backup_path)
 
 		-- Actually restore the plugins
 		for _, plugin_info in ipairs(plugins_to_restore) do
-			local plugin_name = plugin_info.name
-			local target_version = plugin_info.version
+			do
+				local plugin_name = plugin_info.name
+				local target_version = plugin_info.version
 
-			-- Use Lazy.nvim's plugin metadata to get the actual directory (array search for sandbox compatibility)
-			local plugin_data = nil
-			for _, p in pairs(lazy.plugins()) do
-				if p.name == plugin_name then
-					plugin_data = p
-					break
+				-- Use Lazy.nvim's plugin metadata to get the actual directory (array search for sandbox compatibility)
+				local plugin_data = nil
+				for _, p in pairs(lazy.plugins()) do
+					if p.name == plugin_name then
+						plugin_data = p
+						break
+					end
 				end
-			end
-			if not plugin_data then
-				vim.api.nvim_err_writeln("❌ Plugin not installed: " .. plugin_name)
-				goto continue
-			end
+				if not plugin_data then
+					vim.api.nvim_err_writeln("❌ Plugin not installed: " .. plugin_name)
+					break -- skip to next plugin
+				end
 
-			local plugin_dir = plugin_data.dir
+				local plugin_dir = plugin_data.dir
 
-			if vim.fn.isdirectory(plugin_dir) == 1 then
-				-- First check if the commit exists in the repository
-				local check_cmd = string.format(
-					"cd %s && git cat-file -e %s",
-					vim.fn.shellescape(plugin_dir),
-					vim.fn.shellescape(target_version)
-				)
-				local check_result = vim.fn.system(check_cmd)
-
-				if vim.v.shell_error == 0 then
-					-- Commit exists, proceed with checkout
-					local git_cmd = string.format(
-						"cd %s && git checkout %s",
+				if vim.fn.isdirectory(plugin_dir) == 1 then
+					-- First check if the commit exists in the repository
+					local check_cmd = string.format(
+						"cd %s && git cat-file -e %s",
 						vim.fn.shellescape(plugin_dir),
 						vim.fn.shellescape(target_version)
 					)
-					local result = vim.fn.system(git_cmd)
+					local check_result = vim.fn.system(check_cmd)
+
 					if vim.v.shell_error == 0 then
-						print("✅ Restored plugin: " .. plugin_name .. " to " .. target_version:sub(1, 7))
+						-- Commit exists, proceed with checkout
+						local git_cmd = string.format(
+							"cd %s && git checkout %s",
+							vim.fn.shellescape(plugin_dir),
+							vim.fn.shellescape(target_version)
+						)
+						local result = vim.fn.system(git_cmd)
+						if vim.v.shell_error == 0 then
+							print("✅ Restored plugin: " .. plugin_name .. " to " .. target_version:sub(1, 7))
+						else
+							vim.api.nvim_err_writeln("❌ Failed to restore " .. plugin_name .. ": " .. result)
+						end
 					else
-						vim.api.nvim_err_writeln("❌ Failed to restore " .. plugin_name .. ": " .. result)
+						-- Commit doesn't exist, try to fetch and then checkout
+						print(
+							"⚠️  Commit "
+								.. target_version:sub(1, 7)
+								.. " not found locally for "
+								.. plugin_name
+								.. ", attempting to fetch..."
+						)
+
+						local fetch_cmd = string.format("cd %s && git fetch --all", vim.fn.shellescape(plugin_dir))
+						vim.fn.system(fetch_cmd)
+
+						-- Try checkout again after fetch
+						local git_cmd = string.format(
+							"cd %s && git checkout %s",
+							vim.fn.shellescape(plugin_dir),
+							vim.fn.shellescape(target_version)
+						)
+						local result = vim.fn.system(git_cmd)
+						if vim.v.shell_error == 0 then
+							print(
+								"✅ Restored plugin: "
+									.. plugin_name
+									.. " to "
+									.. target_version:sub(1, 7)
+									.. " (after fetch)"
+							)
+						else
+							vim.api.nvim_err_writeln(
+								"❌ Failed to restore "
+									.. plugin_name
+									.. " even after fetch. Commit may not exist: "
+									.. target_version:sub(1, 7)
+							)
+						end
 					end
 				else
-					-- Commit doesn't exist, try to fetch and then checkout
-					print(
-						"⚠️  Commit "
-							.. target_version:sub(1, 7)
-							.. " not found locally for "
-							.. plugin_name
-							.. ", attempting to fetch..."
-					)
-
-					local fetch_cmd = string.format("cd %s && git fetch --all", vim.fn.shellescape(plugin_dir))
-					vim.fn.system(fetch_cmd)
-
-					-- Try checkout again after fetch
-					local git_cmd = string.format(
-						"cd %s && git checkout %s",
-						vim.fn.shellescape(plugin_dir),
-						vim.fn.shellescape(target_version)
-					)
-					local result = vim.fn.system(git_cmd)
-					if vim.v.shell_error == 0 then
-						print(
-							"✅ Restored plugin: "
-								.. plugin_name
-								.. " to "
-								.. target_version:sub(1, 7)
-								.. " (after fetch)"
-						)
-					else
-						vim.api.nvim_err_writeln(
-							"❌ Failed to restore "
-								.. plugin_name
-								.. " even after fetch. Commit may not exist: "
-								.. target_version:sub(1, 7)
-						)
-					end
+					vim.api.nvim_err_writeln("❌ Plugin directory not found: " .. plugin_name .. " at " .. plugin_dir)
 				end
-			else
-				vim.api.nvim_err_writeln("❌ Plugin directory not found: " .. plugin_name .. " at " .. plugin_dir)
 			end
-
-			::continue::
 		end
 
 		print("🔄 Restart Neovim to ensure all changes take effect.")
