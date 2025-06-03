@@ -16,7 +16,7 @@ A Neovim plugin for backing up and restoring Lazy.nvim plugin versions. LazyMana
 
 ### Using Lazy.nvim
 
-Add LazyManager to your Lazy.nvim configuration:
+Add LazyManager to your Lazy.nvim configuration
 
 ```lua
 {
@@ -74,7 +74,7 @@ vim.keymap.set('n', '<leader>lr', '<cmd>LazyRestore<cr>', { desc = 'Restore plug
 vim.keymap.set('n', '<leader>ll', '<cmd>LazyListBackups<cr>', { desc = 'List backups' })
 vim.keymap.set('n', '<leader>la', '<cmd>LazyRestoreFile<cr>', { desc = 'Restore entire backup file' })
 ```
-...more, better, faster, stronger, and more powerful than ever before!
+...more, better, faster, stronger, and powerful than ever before!
 
 ### Backup Directory
 
