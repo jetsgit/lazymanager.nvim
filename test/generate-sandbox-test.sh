@@ -11,14 +11,21 @@ fi
 
 set -e
 
-PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanager.lua}"
+PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanager/lazymanager.lua}"
 SANDBOX_DIR="$HOME/nvim-lazy-manager-test"
 NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
-LAZY_MANAGER_TEST="$NVIM_CONFIG_DIR/lua/lazymanager.lua"
+MODULE_DIR="$NVIM_CONFIG_DIR/lua/lazymanager"
+LAZY_MANAGER_TEST="$MODULE_DIR/lazymanager.lua"
 NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
 
 if mkdir -p "$NVIM_CONFIG_DIR/lua"; then
     echo -e "\033[1;32m✅ SUCCESS: Created $NVIM_CONFIG_DIR\033[0m"  # Big green checkmark
+else
+    echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"  # Big red X
+fi
+
+if mkdir -p "$MODULE_DIR"; then
+    echo -e "\033[1;32m✅ SUCCESS: Created $MODULE_DIR\033[0m"  # Big green checkmark
 else
     echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"  # Big red X
 fi
@@ -130,7 +137,7 @@ require("lazy").setup({
 })
 
 -- Load LazyManager after lazy.nvim is set up
-local lazy_manager = require('lazymanager')
+local lazy_manager = require('lazymanager.lazymanager')
 lazy_manager.setup()
 
 -- Add helpful keymaps for testing
