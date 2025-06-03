@@ -231,6 +231,47 @@ Ensure Neovim has write access to `~/.config/nvim/lazy-plugin-backups/`.
 - Git (for plugin version detection and restoration)
 - Unix-like system (Linux, macOS) for shell commands
 
+## Sandbox
+
+The sandbox allows you to explore features like plugin installation, listing installed plugins, and restoring plugins—all within an isolated environment that won’t interfere with your main Neovim configuration.
+
+### Setup
+
+1. In the `test/` directory, run:
+    ```sh
+    ./generate-sandbox-test.sh
+    ```
+2. Change to the sandbox directory:
+    ```sh
+    cd ~/nvim-lazy-manager-test
+    ```
+3. Install test plugins by running:
+    ```sh
+    ./test_lazy_manager.sh
+    ```
+4. In Neovim, verify you are using isolated paths by running:
+    ```lua
+    :LazyDebugPaths
+    ```
+
+### Usage
+
+- Try out all LazyManager features safely.
+- To check for existing and newly created backups, run:
+    ```sh
+    ./status.sh
+    ```
+    in `~/nvim-lazy-manager-test`.
+- List all backups and their contents with:
+    ```sh
+    ./verify_backups.sh
+    ```
+- When finished, remove the sandbox with:
+    ```sh
+    ./cleanup.sh
+    ```
+
+
 ## License
 
 MIT License
