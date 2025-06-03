@@ -349,20 +349,21 @@ function LazyManager.setup(opts)
 			if #args > 0 and args[#args]:match("%.json$") then
 				backup_file = table.remove(args)
 			end
-			-- If the first argument is not a backup file, show plugin picker filtered by input
-			if #args > 0 and (not args[1]:match("%.json$")) then
-				local lazy = require("lazy")
-				local plugins = {}
-				for _, plugin in pairs(lazy.plugins()) do
-					table.insert(plugins, plugin.name)
-				end
-				local default_filter = args[1] or ""
-				if pcall(require, "telescope.builtin") then
-					require("telescope.pickers").new({}, {
+		end
+
+		-- No arguments: show plugin selection UI
+		if #args == 0 then
+			local lazy = require("lazy")
+			local plugins = {}
+			for _, plugin in pairs(lazy.plugins()) do
+				table.insert(plugins, plugin.name)
+			end
+			if pcall(require, "telescope.builtin") then
+				require("telescope.pickers")
+					.new({}, {
 						prompt_title = "Select plugin to restore",
 						finder = require("telescope.finders").new_table({ results = plugins }),
 						sorter = require("telescope.config").values.generic_sorter({}),
-						default_text = default_filter,
 						attach_mappings = function(_, _)
 							local actions = require("telescope.actions")
 							local action_state = require("telescope.actions.state")
@@ -370,52 +371,13 @@ function LazyManager.setup(opts)
 								actions.close(prompt_bufnr)
 								local selection = action_state.get_selected_entry()
 								if selection and selection[1] then
-									-- Phase 2: After plugin selection, show backup picker for that plugin
 									LazyManager.telescope_plugin_backups(selection[1])
 								end
 							end)
 							return true
 						end,
-					}):find()
-				else
-					vim.ui.select(plugins, { prompt = "Select plugin to restore" }, function(choice)
-						if choice then
-							LazyManager.telescope_plugin_backups(choice)
-						end
-					end)
-				end
-				return
-			end
-			if #args == 0 and backup_file then
-				LazyManager.restore_plugins({}, backup_file)
-			else
-				LazyManager.restore_plugins(args, backup_file)
-			end
-		else
-			-- No arguments: show plugin picker (same as above, but no filter)
-			local lazy = require("lazy")
-			local plugins = {}
-			for _, plugin in pairs(lazy.plugins()) do
-				table.insert(plugins, plugin.name)
-			end
-			if pcall(require, "telescope.builtin") then
-				require("telescope.pickers").new({}, {
-					prompt_title = "Select plugin to restore",
-					finder = require("telescope.finders").new_table({ results = plugins }),
-					sorter = require("telescope.config").values.generic_sorter({}),
-					attach_mappings = function(_, _)
-						local actions = require("telescope.actions")
-						local action_state = require("telescope.actions.state")
-						actions.select_default:replace(function(prompt_bufnr)
-							actions.close(prompt_bufnr)
-							local selection = action_state.get_selected_entry()
-							if selection and selection[1] then
-								LazyManager.telescope_plugin_backups(selection[1])
-							end
-						end)
-						return true
-					end,
-				}):find()
+					})
+					:find()
 			else
 				vim.ui.select(plugins, { prompt = "Select plugin to restore" }, function(choice)
 					if choice then
@@ -423,6 +385,69 @@ function LazyManager.setup(opts)
 					end
 				end)
 			end
+			return
+		end
+
+		-- One argument: skip plugin selection, go directly to backup selection for that plugin
+		if #args == 1 then
+			LazyManager.telescope_plugin_backups(args[1])
+			return
+		end
+
+		-- MULTI-PLUGIN RESTORE: If multiple plugins specified, prompt for backup file, then restore all specified plugins.
+		if #args > 1 then
+			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
+			if #files == 0 then
+				vim.api.nvim_err_writeln("❌ No backups found in " .. backup_dir)
+				return
+			end
+			table.sort(files, function(a, b)
+				return a > b
+			end)
+
+			-- Use Telescope if available, else fallback to vim.ui.select
+			local picker = function(cb)
+				if pcall(require, "telescope.builtin") then
+					require("telescope.pickers")
+						.new({}, {
+							prompt_title = "Select Lazy.nvim Backup to Restore (MULTI-PLUGIN)",
+							finder = require("telescope.finders").new_table({ results = files }),
+							sorter = require("telescope.config").values.generic_sorter({}),
+							attach_mappings = function(_, _)
+								local actions = require("telescope.actions")
+								local action_state = require("telescope.actions.state")
+								actions.select_default:replace(function(prompt_bufnr)
+									actions.close(prompt_bufnr)
+									local selection = action_state.get_selected_entry()
+									if selection and selection[1] then
+										cb(selection[1])
+									end
+								end)
+								return true
+							end,
+						})
+						:find()
+				else
+					local names = {}
+					for _, f in ipairs(files) do
+						table.insert(names, vim.fn.fnamemodify(f, ":t"))
+					end
+					vim.ui.select(names, { prompt = "Select backup file" }, function(choice)
+						if choice then
+							for _, f in ipairs(files) do
+								if vim.fn.fnamemodify(f, ":t") == choice then
+									cb(f)
+									return
+								end
+							end
+						end
+					end)
+				end
+			end
+
+			picker(function(selected_backup)
+				LazyManager.restore_plugins(args, selected_backup)
+			end)
 			return
 		end
 	end, {
@@ -450,7 +475,6 @@ function LazyManager.setup(opts)
 			return completions
 		end,
 	})
-
 	vim.api.nvim_create_user_command("LazyListBackups", LazyManager.list_backups, {})
 
 	-- Keep LazyRestoreFile as legacy command for backwards compatibility
@@ -465,23 +489,25 @@ function LazyManager.setup(opts)
 					vim.api.nvim_err_writeln("❌ No backups found in " .. backup_dir)
 					return
 				end
-				require("telescope.pickers").new({}, {
-					prompt_title = "Select Lazy.nvim Backup to Restore (ALL plugins)",
-					finder = require("telescope.finders").new_table({ results = files }),
-					sorter = require("telescope.config").values.generic_sorter({}),
-					attach_mappings = function(_, _)
-						local actions = require("telescope.actions")
-						local action_state = require("telescope.actions.state")
-						actions.select_default:replace(function(prompt_bufnr)
-							actions.close(prompt_bufnr)
-							local selection = action_state.get_selected_entry()
-							if selection and selection[1] then
-								LazyManager.restore_file_full(selection[1])
-							end
-						end)
-						return true
-					end,
-				}):find()
+				require("telescope.pickers")
+					.new({}, {
+						prompt_title = "Select Lazy.nvim Backup to Restore (ALL plugins)",
+						finder = require("telescope.finders").new_table({ results = files }),
+						sorter = require("telescope.config").values.generic_sorter({}),
+						attach_mappings = function(_, _)
+							local actions = require("telescope.actions")
+							local action_state = require("telescope.actions.state")
+							actions.select_default:replace(function(prompt_bufnr)
+								actions.close(prompt_bufnr)
+								local selection = action_state.get_selected_entry()
+								if selection and selection[1] then
+									LazyManager.restore_file_full(selection[1])
+								end
+							end)
+							return true
+						end,
+					})
+					:find()
 				return
 			else
 				vim.api.nvim_err_writeln("❌ Please specify a backup file.")
@@ -533,7 +559,7 @@ function LazyManager.telescope_plugin_backups(plugin_name)
 			f:close()
 			local ok, data = pcall(vim.fn.json_decode, content)
 			if ok and data and data[plugin_name] then
-				table.insert(matching, {file=file, commit=data[plugin_name]})
+				table.insert(matching, { file = file, commit = data[plugin_name] })
 			end
 		end
 	end
@@ -542,45 +568,49 @@ function LazyManager.telescope_plugin_backups(plugin_name)
 		return
 	end
 	if pcall(require, "telescope.builtin") then
-		require("telescope.pickers").new({}, {
-			prompt_title = "Select backup for " .. plugin_name,
-			finder = require("telescope.finders").new_table {
-				results = matching,
-				entry_maker = function(entry)
-					return {
-						value = entry,
-						display = vim.fn.fnamemodify(entry.file, ":t"),
-						ordinal = vim.fn.fnamemodify(entry.file, ":t"),
-					}
+		require("telescope.pickers")
+			.new({}, {
+				prompt_title = "Select backup for " .. plugin_name,
+				finder = require("telescope.finders").new_table({
+					results = matching,
+					entry_maker = function(entry)
+						return {
+							value = entry,
+							display = vim.fn.fnamemodify(entry.file, ":t"),
+							ordinal = vim.fn.fnamemodify(entry.file, ":t"),
+						}
+					end,
+				}),
+				previewer = require("telescope.previewers").new_buffer_previewer({
+					define_preview = function(self, entry, _)
+						local commit = entry.value.commit or "(no commit)"
+						vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {
+							"Plugin: " .. plugin_name,
+							"Backup: " .. vim.fn.fnamemodify(entry.value.file, ":t"),
+							"Commit: " .. commit,
+						})
+					end,
+				}),
+				attach_mappings = function(_, _)
+					local actions = require("telescope.actions")
+					local action_state = require("telescope.actions.state")
+					actions.select_default:replace(function(prompt_bufnr)
+						actions.close(prompt_bufnr)
+						local selection = action_state.get_selected_entry()
+						if selection and selection.value and selection.value.file then
+							LazyManager.restore_plugins({ plugin_name }, selection.value.file)
+						end
+					end)
+					return true
 				end,
-			},
-			previewer = require("telescope.previewers").new_buffer_previewer {
-				define_preview = function(self, entry, _)
-					local commit = entry.value.commit or "(no commit)"
-					vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, {
-						"Plugin: " .. plugin_name,
-						"Backup: " .. vim.fn.fnamemodify(entry.value.file, ":t"),
-						"Commit: " .. commit,
-					})
-				end
-			},
-			attach_mappings = function(_, _)
-				local actions = require("telescope.actions")
-				local action_state = require("telescope.actions.state")
-				actions.select_default:replace(function(prompt_bufnr)
-					actions.close(prompt_bufnr)
-					local selection = action_state.get_selected_entry()
-					if selection and selection.value and selection.value.file then
-						LazyManager.restore_plugins({plugin_name}, selection.value.file)
-					end
-				end)
-				return true
-			end,
-		}):find()
+			})
+			:find()
 	else
 		-- Fallback: just restore from the most recent matching backup
-		table.sort(matching, function(a, b) return a.file > b.file end)
-		LazyManager.restore_plugins({plugin_name}, matching[1].file)
+		table.sort(matching, function(a, b)
+			return a.file > b.file
+		end)
+		LazyManager.restore_plugins({ plugin_name }, matching[1].file)
 	end
 end
 
@@ -654,7 +684,13 @@ function LazyManager.restore_file_full(backup_path)
 						vim.api.nvim_err_writeln("❌ Failed to restore " .. plugin_name .. ": " .. result)
 					end
 				else
-					print("⚠️  Commit " .. target_version:sub(1, 7) .. " not found locally for " .. plugin_name .. ", attempting to fetch...")
+					print(
+						"⚠️  Commit "
+							.. target_version:sub(1, 7)
+							.. " not found locally for "
+							.. plugin_name
+							.. ", attempting to fetch..."
+					)
 					local fetch_cmd = string.format("cd %s && git fetch --all", vim.fn.shellescape(plugin_dir))
 					vim.fn.system(fetch_cmd)
 					local git_cmd = string.format(
@@ -664,9 +700,20 @@ function LazyManager.restore_file_full(backup_path)
 					)
 					local result = vim.fn.system(git_cmd)
 					if vim.v.shell_error == 0 then
-						print("✅ Restored plugin: " .. plugin_name .. " to " .. target_version:sub(1, 7) .. " (after fetch)")
+						print(
+							"✅ Restored plugin: "
+								.. plugin_name
+								.. " to "
+								.. target_version:sub(1, 7)
+								.. " (after fetch)"
+						)
 					else
-						vim.api.nvim_err_writeln("❌ Failed to restore " .. plugin_name .. " even after fetch. Commit may not exist: " .. target_version:sub(1, 7))
+						vim.api.nvim_err_writeln(
+							"❌ Failed to restore "
+								.. plugin_name
+								.. " even after fetch. Commit may not exist: "
+								.. target_version:sub(1, 7)
+						)
 					end
 				end
 			else
