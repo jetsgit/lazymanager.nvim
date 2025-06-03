@@ -125,11 +125,9 @@ Restores plugins from backups with flexible syntax options:
 ### `:LazyListBackups`
 
 Lists all available backup files, sorted by date (most recent first):
-
 ```vim
 :LazyListBackups
 ```
-
 **Output**:
 ```
 ✅ Available backups (most recent first):
@@ -137,17 +135,12 @@ Lists all available backup files, sorted by date (most recent first):
 2. 2024-01-15-1200-lazy-plugin-backup.json
 3. 2024-01-14-0900-lazy-plugin-backup.json
 ```
+### `:LazyRestoreFile`
 
-### `:LazyRestoreFile` (Legacy)
-
-Alternative restore command for backwards compatibility:
-
+Alternative restore command:
 ```vim
 " Restore all plugins from specified backup
 :LazyRestoreFile 2024-01-15-1430-lazy-plugin-backup.json
-
-" Restore specific plugins from specified backup
-:LazyRestoreFile 2024-01-15-1430-lazy-plugin-backup.json telescope.nvim
 ```
 
 ## How It Works
