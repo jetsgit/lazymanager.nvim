@@ -22,7 +22,7 @@ Add LazyManager to your Lazy.nvim configuration
 {
   "jetsgit/lazymanager.nvim",
   config = function()
-    require("lazymanager").setup()
+    require("lazymanager.lazymanager").setup()
   end,
 }
 ```
