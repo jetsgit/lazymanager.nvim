@@ -1,11 +1,11 @@
 -- lua/lazymanager/backup.lua
+-- lua/lazymanager/backup.lua
 local M = {}
-
-local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
+local paths = require("lazymanager.paths")
 
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
-	return backup_dir .. date .. "-lazy-plugin-backup.json"
+	return paths.get_backup_dir() .. date .. "-lazy-plugin-backup.json"
 end
 
 local function json_pretty(tbl, indent)
@@ -50,8 +50,8 @@ end
 
 --- Backup all plugins and return the backup file path.
 function M.backup_plugins()
-	if vim.fn.isdirectory(backup_dir) == 0 then
-		vim.fn.mkdir(backup_dir, "p")
+	if vim.fn.isdirectory(paths.get_backup_dir()) == 0 then
+		vim.fn.mkdir(paths.get_backup_dir(), "p")
 	end
 	local lazy = require("lazy")
 	local plugin_versions = {}
@@ -88,7 +88,7 @@ function M.backup_plugins()
 end
 
 function M.get_backup_dir()
-	return backup_dir
+	return paths.get_backup_dir()
 end
 
 return M
