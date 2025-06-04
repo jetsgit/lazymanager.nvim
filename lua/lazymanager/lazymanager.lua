@@ -8,8 +8,8 @@ LazyManager.backup_plugins = Backup.backup_plugins
 LazyManager.get_backup_dir = Backup.get_backup_dir
 
 -- Lazymanager-path
-local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
-
+-- local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
+local backup_dir = LazyManager.get_backup_dir()
 -- Generate timestamp-based backup filename
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
