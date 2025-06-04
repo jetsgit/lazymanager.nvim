@@ -1,9 +1,15 @@
+local Backup = require("lazymanager.backup")
 -- Define LazyManager as a module
+
 LazyManager = {}
+-- Delegate backup functions to the backup module
+
+LazyManager.backup_plugins = Backup.backup_plugins
+LazyManager.get_backup_dir = Backup.get_backup_dir
 
 -- Lazymanager-path
-local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
-
+-- local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
+local backup_dir = LazyManager.get_backup_dir()
 -- Generate timestamp-based backup filename
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
@@ -54,44 +60,43 @@ local function json_pretty(tbl, indent)
 	return dump(tbl, 0)
 end
 
-function LazyManager.backup_plugins()
-	-- Ensure backup directory exists
-	if vim.fn.isdirectory(backup_dir) == 0 then
-		vim.fn.mkdir(backup_dir, "p")
-	end
-	local lazy = require("lazy")
-	local plugin_versions = {}
+-- function LazyManager.backup_plugins()
+-- 	-- Ensure backup directory exists
+-- 	if vim.fn.isdirectory(backup_dir) == 0 then
+-- 		vim.fn.mkdir(backup_dir, "p")
+-- 	end
+-- 	local lazy = require("lazy")
+-- 	local plugin_versions = {}
 
-	for _, plugin in pairs(lazy.plugins()) do
-		local name = plugin.name
-		local dir = plugin.dir
+-- 	for _, plugin in pairs(lazy.plugins()) do
+-- 		local name = plugin.name
+-- 		local dir = plugin.dir
 
-		if dir and vim.fn.isdirectory(dir) == 1 then
-			-- Use git to get the current commit hash
-			local commit = vim.fn.system("cd " .. vim.fn.shellescape(dir) .. " && git rev-parse HEAD"):gsub("\n", "")
-			if commit and #commit > 0 and not commit:match("fatal") then
-				-- Truncate the commit hash to 12 digits
-				plugin_versions[name] = commit:sub(1, 12)
-			else
-				plugin_versions[name] = plugin.commit or plugin.version or "latest"
-			end
-		else
-			plugin_versions[name] = plugin.commit or plugin.version or "latest"
-		end
-	end
+-- 		if dir and vim.fn.isdirectory(dir) == 1 then
+-- 			-- Use git to get the current commit hash
+-- 			local commit = vim.fn.system("cd " .. vim.fn.shellescape(dir) .. " && git rev-parse HEAD"):gsub("\n", "")
+-- 			if commit and #commit > 0 and not commit:match("fatal") then
+-- 				-- Truncate the commit hash to 12 digits
+-- 				plugin_versions[name] = commit:sub(1, 12)
+-- 			else
+-- 				plugin_versions[name] = plugin.commit or plugin.version or "latest"
+-- 			end
+-- 		else
+-- 			plugin_versions[name] = plugin.commit or plugin.version or "latest"
+-- 		end
+-- 	end
 
-	-- Use timestamped backup file
-	LazyManager.latest_backup_file = get_backup_filename()
-	local json = json_pretty(plugin_versions, 2)
-	local file = io.open(LazyManager.latest_backup_file, "w")
+-- Use timestamped backup file
+LazyManager.latest_backup_file = get_backup_filename()
+local json = json_pretty(plugin_versions, 2)
+local file = io.open(LazyManager.latest_backup_file, "w")
 
-	if file then
-		file:write(json)
-		file:close()
-		print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
-	else
-		vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
-	end
+if file then
+	file:write(json)
+	file:close()
+	print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
+else
+	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
 end
 
 function LazyManager.restore_plugins(args, backup_path)
@@ -293,9 +298,9 @@ function LazyManager.list_backups()
 end
 
 -- Getter function to expose backup directory path for use in init.lua
-function LazyManager.get_backup_dir()
-	return backup_dir
-end
+-- function LazyManager.get_backup_dir()
+-- 	return backup_dir
+-- end
 
 function LazyManager.telescope_restore(callback)
 	local ok, telescope = pcall(require, "telescope.builtin")
