@@ -22,7 +22,7 @@ Add LazyManager to your Lazy.nvim configuration
 {
   "jetsgit/lazymanager.nvim",
   config = function()
-    require("lazymanager").setup()
+    require("lazymanager.lazymanager").setup()
   end,
 }
 ```
@@ -34,7 +34,7 @@ Add LazyManager to your Lazy.nvim configuration
 3. Add to your `init.lua`:
 
 ```lua
-require("lazymanager").setup()
+require("lazymanager.lazymanager").setup()
 ```
 
 ## Configuration
@@ -62,7 +62,7 @@ require("lazy").setup({
       },
     },
     config = function()
-      require('lazymanager').setup()
+      require('lazymanager.lazymanager').setup()
     end,
   },
 })
@@ -83,7 +83,7 @@ Backups are stored in `~/.config/nvim/lazy-plugin-backups/` by default. The dire
 You can access the backup directory path programmatically:
 
 ```lua
-local backup_dir = require("lazymanager").get_backup_dir()
+local backup_dir = require("lazymanager.lazymanager").get_backup_dir()
 ```
 
 ## Commands
@@ -233,7 +233,15 @@ Ensure Neovim has write access to `~/.config/nvim/lazy-plugin-backups/`.
 
 ## Sandbox
 
-The sandbox allows you to explore features like plugin installation, listing installed plugins, and restoring plugins—all within an isolated environment that won’t interfere with your main Neovim configuration.
+The sandbox allows you to explore features like plugin installation, listing installed plugins, and restoring 
+plugins—all within an isolated environment that won’t interfere with your main Neovim configuration.
+Sandbox is provided so you can be confident production version will maintain plugin inegrity.
+
+### ⚠️ Warning! Backup Paths May Get Set to Sandbox
+
+When using the sandbox, LazyManager will create backups in the sandbox directory (`~/nvim-lazy-manager-test/lazy-plugin-backups/`).
+If you use the sandbox and don't run the cleanup script your working production version of LazyManger 
+will only display backups from the sandbox.
 
 ### Setup
 
