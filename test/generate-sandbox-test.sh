@@ -1,7 +1,11 @@
 #!/bin/bash
 # generate-sandbox-test.sh
-# Generates lazymanager-sandbox-test.sh using the latest lazymanager.lua as the embedded module.
+# Generates lazymanager-sandbox-test.sh using the latest lazymanager modules as the embedded modules.
 echo "🧪 Setting up LazyManager testing sandbox..."
+
+SANDBOX_DIR="$HOME/nvim-lazy-manager-test"
+NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
+MODULE_DIR="$NVIM_CONFIG_DIR/lua/lazymanager"
 
 # Clean up any existing sandbox
 if [ -d "$SANDBOX_DIR" ]; then
@@ -11,57 +15,57 @@ fi
 
 set -e
 
-PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanager/lazymanager.lua}"
-SANDBOX_DIR="$HOME/nvim-lazy-manager-test"
-NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
-MODULE_DIR="$NVIM_CONFIG_DIR/lua/lazymanager"
-LAZY_MANAGER_TEST="$MODULE_DIR/lazymanager.lua"
-NVIM_CONFIG_DIR="$SANDBOX_DIR/.config/nvim"
+PROD_LUA="${1:-$HOME/Documents/Neovim/LuaProjects/lazymanager.nvim/lua/lazymanager}"
 
+# Create directories with checks
 if mkdir -p "$NVIM_CONFIG_DIR/lua"; then
-    echo -e "\033[1;32m✅ SUCCESS: Created $NVIM_CONFIG_DIR\033[0m"  # Big green checkmark
+    echo -e "\033[1;32m✅ SUCCESS: Created $NVIM_CONFIG_DIR\033[0m"
 else
-    echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"  # Big red X
+    echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"
 fi
 
 if mkdir -p "$MODULE_DIR"; then
-    echo -e "\033[1;32m✅ SUCCESS: Created $MODULE_DIR\033[0m"  # Big green checkmark
+    echo -e "\033[1;32m✅ SUCCESS: Created $MODULE_DIR\033[0m"
 else
-    echo -e "\033[1;31m❌ ERROR: Failed to create $NVIM_CONFIG_DIR\033[0m"  # Big red X
+    echo -e "\033[1;31m❌ ERROR: Failed to create $MODULE_DIR\033[0m"
 fi
 
 if mkdir -p "$SANDBOX_DIR/.local/share/nvim"; then
-    echo -e "\033[1;32m✅ SUCCESS: Created $SANDBOX_DIR/.local/share/nvim\033[0m"  # Big green checkmark
+    echo -e "\033[1;32m✅ SUCCESS: Created $SANDBOX_DIR/.local/share/nvim\033[0m"
 else
-    echo -e "\033[1;31m❌ ERROR: Failed to create $SANDBOX_DIR/.local/share/nvim\033[0m"  # Big red X
+    echo -e "\033[1;31m❌ ERROR: Failed to create $SANDBOX_DIR/.local/share/nvim\033[0m"
 fi
 
 set -e
 
-TEMP_FILE=$(mktemp)
+# Copy all needed files to the sandbox
+cp "$PROD_LUA/lazymanager.lua" "$MODULE_DIR/lazymanager.lua"
+cp "$PROD_LUA/backup.lua" "$MODULE_DIR/backup.lua"
+cp "$PROD_LUA/paths.lua" "$MODULE_DIR/paths.lua"
 
-awk '
-/-- Lazymanager-path/ {
-    print $0  # Print the comment line wherever found
-    getline   # Read and skip the next line (the one to be replaced)
-    print "-- SANDBOXED: Use sandbox-specific paths"
-    # Read and print debug-paths.lua before continuing
-    while ((getline line < "debug-paths.lua") > 0) {
-        print line
-    }
-    close("debug-paths.lua")
-    next
-}
-{ print $0 }  # Print all other lines unchanged
-' "$PROD_LUA" > "$TEMP_FILE"
+echo "Copied lazymanager modules to sandbox."
 
+# Patch paths.lua for sandbox
+# SANDBOX_PATHS="$MODULE_DIR/paths.lua"
+# TEMP_PATHS=$(mktemp)
 
+# awk '
+# /-- Lazymanager-path/ {
+#     print $0
+#     getline
+#     print "-- SANDBOXED: Use sandbox-specific paths"
+#     print "local M = {}"
+#     print "M.backup_dir = vim.fn.expand(\"~\") .. \"/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/\""
+#     while ((getline line < "test/debug-paths.lua") > 0) {
+#         print line
+#     }
+#     close("test/debug-paths.lua")
+#     next
+# }
+# { print $0 }
+# ' "$SANDBOX_PATHS" > "$TEMP_PATHS" && mv "$TEMP_PATHS" "$SANDBOX_PATHS"
 
-echo "File processed: $PROD_LUA"
-echo "TEMP_FILE contains the modified backup_dir for sandbox."
-
-cat $TEMP_FILE > "$LAZY_MANAGER_TEST"
-
+# echo "Patched paths.lua for sandboxed backup_dir and injected debug helpers."
 # Create basic init.lua for Neovim
 cat > "$NVIM_CONFIG_DIR/init.lua" << 'EOF'
 -- Minimal Neovim config for testing LazyManager
@@ -211,6 +215,7 @@ echo "========================="
 cd "$(dirname "$0")"
 
 # Set environment to use sandbox
+export XDG_HOME="$(pwd)"
 export XDG_CONFIG_HOME="$(pwd)/.config"
 export XDG_DATA_HOME="$(pwd)/.local/share"
 
@@ -245,10 +250,12 @@ echo ""
 echo "⚠️  Note: All operations are sandboxed and won't affect your main nvim config"
 echo ""
 
-echo "Press Enter to launch Neovim..."
-read
+# echo 'export LAZYMANAGER_SANDBOX=1' > "$(dirname "$0")/.env"
+# source "$(dirname "$0")/.env"
 
-nvim -u "$XDG_CONFIG_HOME/nvim/init.lua"
+echo "Press Enter to launch Neovim..."
+
+LAZYMANAGER_SANDBOX=1 nvim -u "$XDG_CONFIG_HOME/nvim/init.lua"
 EOF
 
 chmod +x "$SANDBOX_DIR/test_lazy_manager.sh"
