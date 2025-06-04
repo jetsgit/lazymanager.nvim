@@ -62,7 +62,7 @@ require("lazy").setup({
       },
     },
     config = function()
-      require('lazymanager').setup()
+      require('lazymanager.lazymanager').setup()
     end,
   },
 })
@@ -83,7 +83,7 @@ Backups are stored in `~/.config/nvim/lazy-plugin-backups/` by default. The dire
 You can access the backup directory path programmatically:
 
 ```lua
-local backup_dir = require("lazymanager").get_backup_dir()
+local backup_dir = require("lazymanager.lazymanager").get_backup_dir()
 ```
 
 ## Commands
