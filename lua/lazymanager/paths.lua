@@ -2,8 +2,12 @@
 local M = {}
 
 -- Environment detection for sandbox
-local is_sandbox = vim.env.LAZYMANAGER_SANDBOX == "1"
-	or vim.fn.isdirectory(vim.fn.expand("~") .. "/nvim-lazy-manager-test") == 1
+local is_sandbox = false
+if vim.env.LAZYMANAGER_SANDBOX and tostring(vim.env.LAZYMANAGER_SANDBOX) == "1" then
+	is_sandbox = true
+elseif vim.fn.isdirectory(vim.fn.expand("~") .. "/nvim-lazy-manager-test") == 1 then
+	is_sandbox = true
+end
 
 if is_sandbox then
 	M.backup_dir = vim.fn.expand("~") .. "/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/"
