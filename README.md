@@ -34,7 +34,7 @@ Add LazyManager to your Lazy.nvim configuration
 3. Add to your `init.lua`:
 
 ```lua
-require("lazymanager").setup()
+require("lazymanager.lazymanager").setup()
 ```
 
 ## Configuration
