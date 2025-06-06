@@ -42,6 +42,7 @@ set -e
 cp "$PROD_LUA/lazymanager.lua" "$MODULE_DIR/lazymanager.lua"
 cp "$PROD_LUA/backup.lua" "$MODULE_DIR/backup.lua"
 cp "$PROD_LUA/paths.lua" "$MODULE_DIR/paths.lua"
+cp "$PROD_LUA/ui.lua" "$MODULE_DIR/ui.lua"
 
 echo "Copied lazymanager modules to sandbox."
 
@@ -143,6 +144,26 @@ require("lazy").setup({
 -- Load LazyManager after lazy.nvim is set up
 local lazy_manager = require('lazymanager.lazymanager')
 lazy_manager.setup()
+
+--LazyDebugPaths
+vim.api.nvim_create_user_command("LazyDebugPaths", function()
+  local lazy = require("lazy")
+  local paths = require("lazymanager.paths")
+  print("🔍 LazyManager Debug - Plugin Paths:")
+  print("📁 Backup dir: " .. paths.get_backup_dir())
+  print("🔌 Plugin root: " .. (vim.fn.stdpath("data") .. "/lazy_plugins"))
+  print("")
+  print("📦 Installed plugins:")
+  for _, plugin in pairs(lazy.plugins()) do
+    local name = plugin.name
+    local sandboxed_dir = vim.fn.stdpath("data") .. "/lazy_plugins/" .. name
+    local actual_dir = plugin.dir or "N/A"
+    local exists = vim.fn.isdirectory(sandboxed_dir) == 1 and "✅" or "❌"
+    print(string.format("  %s %s", exists, name))
+    print(string.format("    Lazy dir: %s", actual_dir))
+    print(string.format("    Sandbox:  %s", sandboxed_dir))
+  end
+end, {})
 
 -- Add helpful keymaps for testing
 vim.g.mapleader = " "

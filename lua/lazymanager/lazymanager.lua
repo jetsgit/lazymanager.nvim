@@ -1,9 +1,8 @@
 local Backup = require("lazymanager.backup")
--- Define LazyManager as a module
+local UI = require("lazymanager.ui")
 
-LazyManager = {}
+local LazyManager = {}
 -- Delegate backup functions to the backup module
-
 LazyManager.backup_plugins = Backup.backup_plugins
 LazyManager.get_backup_dir = Backup.get_backup_dir
 
@@ -87,17 +86,17 @@ end
 -- 	end
 
 -- Use timestamped backup file
-LazyManager.latest_backup_file = get_backup_filename()
-local json = json_pretty(plugin_versions, 2)
-local file = io.open(LazyManager.latest_backup_file, "w")
+-- LazyManager.latest_backup_file = get_backup_filename()
+-- local json = json_pretty(plugin_versions, 2)
+-- local file = io.open(LazyManager.latest_backup_file, "w")
 
-if file then
-	file:write(json)
-	file:close()
-	print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
-else
-	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
-end
+-- if file then
+-- 	file:write(json)
+-- 	file:close()
+-- 	print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
+-- else
+-- 	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
+-- end
 
 function LazyManager.restore_plugins(args, backup_path)
 	-- Ensure backup directory exists
@@ -154,9 +153,7 @@ function LazyManager.restore_plugins(args, backup_path)
 	local prompt_msg = "Are you sure you want to restore plugins from " .. backup_filename .. "? (y/n): "
 
 	-- Use vim.ui.input for confirmation
-	vim.ui.input({
-		prompt = prompt_msg,
-	}, function(input)
+	UI.input({ prompt = prompt_msg }, function(input)
 		-- Handle case where user cancels (input is nil) or says no
 		if not input or input:lower() ~= "y" then
 			print("Restore canceled.")
@@ -356,103 +353,42 @@ function LazyManager.setup(opts)
 			end
 		end
 
-		-- No arguments: show plugin selection UI
+		local lazy = require("lazy")
+		local plugins = {}
+		for _, plugin in pairs(lazy.plugins()) do
+			table.insert(plugins, plugin.name)
+		end
+
 		if #args == 0 then
-			local lazy = require("lazy")
-			local plugins = {}
-			for _, plugin in pairs(lazy.plugins()) do
-				table.insert(plugins, plugin.name)
-			end
-			if pcall(require, "telescope.builtin") then
-				require("telescope.pickers")
-					.new({}, {
-						prompt_title = "Select plugin to restore",
-						finder = require("telescope.finders").new_table({ results = plugins }),
-						sorter = require("telescope.config").values.generic_sorter({}),
-						attach_mappings = function(_, _)
-							local actions = require("telescope.actions")
-							local action_state = require("telescope.actions.state")
-							actions.select_default:replace(function(prompt_bufnr)
-								actions.close(prompt_bufnr)
-								local selection = action_state.get_selected_entry()
-								if selection and selection[1] then
-									LazyManager.telescope_plugin_backups(selection[1])
-								end
-							end)
-							return true
-						end,
-					})
-					:find()
-			else
-				vim.ui.select(plugins, { prompt = "Select plugin to restore" }, function(choice)
-					if choice then
-						LazyManager.telescope_plugin_backups(choice)
-					end
-				end)
-			end
+			UI.telescope_plugin_picker(plugins, function(selected)
+				if selected then
+					LazyManager.telescope_plugin_backups(selected)
+				end
+			end)
 			return
 		end
 
-		-- One argument: skip plugin selection, go directly to backup selection for that plugin
 		if #args == 1 then
 			LazyManager.telescope_plugin_backups(args[1])
 			return
 		end
 
-		-- MULTI-PLUGIN RESTORE: If multiple plugins specified, prompt for backup file, then restore all specified plugins.
 		if #args > 1 then
 			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 			if #files == 0 then
-				vim.api.nvim_err_writeln("❌ No backups found in " .. backup_dir)
+				vim.api.nvim_err_writeln("❌ No backups found in" .. backup_dir)
 				return
 			end
 			table.sort(files, function(a, b)
 				return a > b
 			end)
-
-			-- Use Telescope if available, else fallback to vim.ui.select
-			local picker = function(cb)
-				if pcall(require, "telescope.builtin") then
-					require("telescope.pickers")
-						.new({}, {
-							prompt_title = "Select Lazy.nvim Backup to Restore (MULTI-PLUGIN)",
-							finder = require("telescope.finders").new_table({ results = files }),
-							sorter = require("telescope.config").values.generic_sorter({}),
-							attach_mappings = function(_, _)
-								local actions = require("telescope.actions")
-								local action_state = require("telescope.actions.state")
-								actions.select_default:replace(function(prompt_bufnr)
-									actions.close(prompt_bufnr)
-									local selection = action_state.get_selected_entry()
-									if selection and selection[1] then
-										cb(selection[1])
-									end
-								end)
-								return true
-							end,
-						})
-						:find()
-				else
-					local names = {}
-					for _, f in ipairs(files) do
-						table.insert(names, vim.fn.fnamemodify(f, ":t"))
-					end
-					vim.ui.select(names, { prompt = "Select backup file" }, function(choice)
-						if choice then
-							for _, f in ipairs(files) do
-								if vim.fn.fnamemodify(f, ":t") == choice then
-									cb(f)
-									return
-								end
-							end
-						end
-					end)
+			UI.telescope_backup_picker(
+				files,
+				"Select Lazy.nvim Backup to Restore (MULTI-PLUGIN)",
+				function(selected_backup)
+					LazyManager.restore_plugins(args, selected_backup)
 				end
-			end
-
-			picker(function(selected_backup)
-				LazyManager.restore_plugins(args, selected_backup)
-			end)
+			)
 			return
 		end
 	end, {
@@ -460,15 +396,12 @@ function LazyManager.setup(opts)
 		complete = function(ArgLead, CmdLine, CursorPos)
 			local lazy = require("lazy")
 			local completions = {}
-
-			-- Only complete plugins that are installed in the sandbox
 			for _, plugin in pairs(lazy.plugins()) do
 				local name = plugin.name
 				if name and name:find(ArgLead, 1, true) == 1 then
 					table.insert(completions, name)
 				end
 			end
-
 			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 			for _, file in ipairs(files) do
 				local basename = vim.fn.fnamemodify(file, ":t")
@@ -476,7 +409,6 @@ function LazyManager.setup(opts)
 					table.insert(completions, basename)
 				end
 			end
-
 			return completions
 		end,
 	})
@@ -643,7 +575,7 @@ function LazyManager.restore_file_full(backup_path)
 	end
 	local backup_filename = vim.fn.fnamemodify(backup_to_use, ":t")
 	local prompt_msg = "Are you sure you want to restore ALL plugins from " .. backup_filename .. "? (y/n): "
-	vim.ui.input({ prompt = prompt_msg }, function(input)
+	UI.input({ prompt = prompt_msg }, function(input)
 		if not input or input:lower() ~= "y" then
 			print("Restore canceled.")
 			return
