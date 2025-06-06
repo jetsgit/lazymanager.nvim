@@ -1,6 +1,8 @@
 local Backup = require("lazymanager.backup")
 local ui = require("lazymanager.ui")
 local git = require("lazymanager.git")
+local json_utils = require("lazymanager.utils.json")
+
 -- Define LazyManager as a module
 
 LazyManager = {}
@@ -21,59 +23,66 @@ end
 -- Store most recent backup file path for restore function
 LazyManager.latest_backup_file = ""
 
+--JSON pretty-printing function moved to json.lua
 -- Helper function to pretty-print a Lua table as indented JSON
-local function json_pretty(tbl, indent)
-	indent = indent or 2
-	local function quote(str)
-		return '"' .. tostring(str):gsub('"', '\\"') .. '"'
-	end
-	local function is_array(t)
-		local i = 0
-		for _ in pairs(t) do
-			i = i + 1
-			if t[i] == nil then
-				return false
-			end
-		end
-		return true
-	end
-	local function dump(t, level)
-		level = level or 0
-		local pad = string.rep(" ", level * indent)
-		if type(t) ~= "table" then
-			if type(t) == "string" then
-				return quote(t)
-			else
-				return tostring(t)
-			end
-		end
-		local isarr = is_array(t)
-		local items = {}
-		for k, v in pairs(t) do
-			local key = isarr and "" or (quote(k) .. ": ")
-			table.insert(items, pad .. string.rep(" ", indent) .. key .. dump(v, level + 1))
-		end
-		if isarr then
-			return "[\n" .. table.concat(items, ",\n") .. "\n" .. pad .. "]"
-		else
-			return "{\n" .. table.concat(items, ",\n") .. "\n" .. pad .. "}"
-		end
-	end
-	return dump(tbl, 0)
-end
+-- local function json_pretty(tbl, indent)
+-- 	indent = indent or 2
+-- 	local function quote(str)
+-- 		return '"' .. tostring(str):gsub('"', '\\"') .. '"'
+-- 	end
+-- 	local function is_array(t)
+-- 		local i = 0
+-- 		for _ in pairs(t) do
+-- 			i = i + 1
+-- 			if t[i] == nil then
+-- 				return false
+-- 			end
+-- 		end
+-- 		return true
+-- 	end
+-- 	local function dump(t, level)
+-- 		level = level or 0
+-- 		local pad = string.rep(" ", level * indent)
+-- 		if type(t) ~= "table" then
+-- 			if type(t) == "string" then
+-- 				return quote(t)
+-- 			else
+-- 				return tostring(t)
+-- 			end
+-- 		end
+-- 		local isarr = is_array(t)
+-- 		local items = {}
+-- 		for k, v in pairs(t) do
+-- 			local key = isarr and "" or (quote(k) .. ": ")
+-- 			table.insert(items, pad .. string.rep(" ", indent) .. key .. dump(v, level + 1))
+-- 		end
+-- 		if isarr then
+-- 			return "[\n" .. table.concat(items, ",\n") .. "\n" .. pad .. "]"
+-- 		else
+-- 			return "{\n" .. table.concat(items, ",\n") .. "\n" .. pad .. "}"
+-- 		end
+-- 	end
+-- 	return dump(tbl, 0)
+-- end
 
 -- Use timestamped backup file
 LazyManager.latest_backup_file = get_backup_filename()
-local json = json_pretty(plugin_versions, 2)
-local file = io.open(LazyManager.latest_backup_file, "w")
+local success, err = json_utils.write_file(LazyManager.latest_backup_file, plugin_versions)
 
-if file then
-	file:write(json)
-	file:close()
+if success then
 	print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
 else
-	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
+	vim.api.nvim_err_writeln("❌ Error: Could not create backup file. " .. (err or ""))
 end
+-- local json = json_pretty(plugin_versions, 2)
+-- local file = io.open(LazyManager.latest_backup_file, "w")
+-- if file then
+-- 	file:write(json)
+-- 	file:close()
+-- 	print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
+-- else
+-- 	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
+-- end
 
 -- Helper: resolve which backup file to use
 local function resolve_backup_file(args, backup_path)
@@ -347,6 +356,7 @@ function LazyManager.setup(opts)
 			table.sort(files, function(a, b)
 				return a > b
 			end)
+<<<<<<< Updated upstream
 
 			-- Use Telescope if available, else fallback to vim.ui.select
 			local picker = function(cb)
@@ -385,6 +395,16 @@ function LazyManager.setup(opts)
 							end
 						end
 					end)
+||||||| Stash base
+			table.sort(files, function(a, b) return a > b end)
+			ui.telescope_backup_picker(files, "Select backup file", function(selected_backup)
+				if selected_backup then
+					LazyManager.restore_plugins(args, selected_backup)
+=======
+			ui.telescope_backup_picker(files, "Select backup file", function(selected_backup)
+				if selected_backup then
+					LazyManager.restore_plugins(args, selected_backup)
+>>>>>>> Stashed changes
 				end
 			end
 
@@ -577,16 +597,21 @@ function LazyManager.restore_file_full(backup_path)
 	if not backup_to_use:match("^/") and not backup_to_use:match("^~") then
 		backup_to_use = backup_dir .. backup_to_use
 	end
-	local file = io.open(backup_to_use, "r")
-	if not file then
-		vim.api.nvim_err_writeln("❌ Error: No backup file found at " .. backup_to_use)
-		return
-	end
-	local content = file:read("*a")
-	file:close()
-	local ok, plugin_versions = pcall(vim.fn.json_decode, content)
-	if not ok then
-		vim.api.nvim_err_writeln("❌ Error: Invalid JSON in backup file")
+	-- local file = io.open(backup_to_use, "r")
+	-- if not file then
+	-- 	vim.api.nvim_err_writeln("❌ Error: No backup file found at " .. backup_to_use)
+	-- 	return
+	-- end
+	-- local content = file:read("*a")
+	-- file:close()
+	-- local ok, plugin_versions = pcall(vim.fn.json_decode, content)
+	-- if not ok then
+	-- 	vim.api.nvim_err_writeln("❌ Error: Invalid JSON in backup file")
+	-- 	return
+	-- end
+	local plugin_versions, err = json_utils.read_file(backup_to_use)
+	if not plugin_versions then
+		vim.api.nvim_err_writeln("❌ Error: " .. (err or "Failed to read backup file at " .. backup_to_use))
 		return
 	end
 	local backup_filename = vim.fn.fnamemodify(backup_to_use, ":t")
