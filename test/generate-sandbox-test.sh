@@ -43,6 +43,8 @@ cp "$PROD_LUA/lazymanager.lua" "$MODULE_DIR/lazymanager.lua"
 cp "$PROD_LUA/backup.lua" "$MODULE_DIR/backup.lua"
 cp "$PROD_LUA/paths.lua" "$MODULE_DIR/paths.lua"
 cp "$PROD_LUA/ui.lua" "$MODULE_DIR/ui.lua"
+cp "$PROD_LUA/git.lua" "$MODULE_DIR/git.lua"
+
 
 echo "Copied lazymanager modules to sandbox."
 
