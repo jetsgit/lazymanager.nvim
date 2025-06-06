@@ -15,7 +15,7 @@ if is_sandbox then
 	local sandbox_data = vim.fn.expand("~") .. "/nvim-lazy-manager-test/.local/share/nvim"
 	local backup_dir = vim.fn.expand("~") .. "/nvim-lazy-manager-test/.config/nvim/lazy-plugin-backups/"
 	local plugin_root = sandbox_data .. "/lazy_plugins"
-	function LazyManager_debug_paths()
+	function M.debug_paths()
 		local lazy = require("lazy")
 		print("Sandbox mode is active!")
 		print("🔍 LazyManager Debug - Plugin Paths:")
