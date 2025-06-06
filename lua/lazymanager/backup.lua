@@ -1,7 +1,9 @@
 -- lua/lazymanager/backup.lua
 -- lua/lazymanager/backup.lua
+
 local M = {}
 local paths = require("lazymanager.paths")
+local json_utils = require("lazymanager.utils.json")
 
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
@@ -73,16 +75,24 @@ function M.backup_plugins()
 	end
 
 	local backup_file = get_backup_filename()
-	local json = json_pretty(plugin_versions, 2)
-	local file = io.open(backup_file, "w")
+	-- local json = json_pretty(plugin_versions, 2)
+	-- local file = io.open(backup_file, "w")
 
-	if file then
-		file:write(json)
-		file:close()
+	-- if file then
+	-- 	file:write(json)
+	-- 	file:close()
+	-- 	print("✅ Plugins backed up to: " .. backup_file)
+	-- 	return backup_file
+	-- else
+	-- 	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
+	-- 	return nil
+	-- end
+	local success, err = json_utils.write_file(backup_file, plugin_versions)
+	if success then
 		print("✅ Plugins backed up to: " .. backup_file)
 		return backup_file
 	else
-		vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
+		vim.api.nvim_err_writeln("❌ Error: Could not create backup file. " .. (err or ""))
 		return nil
 	end
 end
