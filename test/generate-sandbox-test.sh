@@ -29,6 +29,11 @@ if mkdir -p "$MODULE_DIR"; then
 else
     echo -e "\033[1;31m❌ ERROR: Failed to create $MODULE_DIR\033[0m"
 fi
+if mkdir -p "$MODULE_DIR/utils"; then
+    echo -e "\033[1;32m✅ SUCCESS: Created $MODULE_DIR/utils\033[0m"
+else
+    echo -e "\033[1;31m❌ ERROR: Failed to create $MODULE_DIR/utils\033[0m"
+fi
 
 if mkdir -p "$SANDBOX_DIR/.local/share/nvim"; then
     echo -e "\033[1;32m✅ SUCCESS: Created $SANDBOX_DIR/.local/share/nvim\033[0m"
@@ -44,6 +49,7 @@ cp "$PROD_LUA/backup.lua" "$MODULE_DIR/backup.lua"
 cp "$PROD_LUA/paths.lua" "$MODULE_DIR/paths.lua"
 cp "$PROD_LUA/ui.lua" "$MODULE_DIR/ui.lua"
 cp "$PROD_LUA/git.lua" "$MODULE_DIR/git.lua"
+cp "$PROD_LUA/utils/json.lua" "$MODULE_DIR/utils/json.lua"
 
 
 echo "Copied lazymanager modules to sandbox."
