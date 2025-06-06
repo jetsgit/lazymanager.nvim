@@ -1,11 +1,5 @@
 local Backup = require("lazymanager.backup")
 local UI = require("lazymanager.ui")
-local Paths = require("lazymanager.paths")
-debug = Paths.debug_paths ~= nil and Paths.debug_paths or false
-if debug then
-	vim.api.nvim_create_user_command("LazyDebugPaths", debug, {})
-end
--- Define LazyManager as a module
 
 local LazyManager = {}
 -- Delegate backup functions to the backup module
