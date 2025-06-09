@@ -3,9 +3,10 @@ local M = {}
 
 -- Environment detection for sandbox
 local is_sandbox = false
-if vim.env.LAZYMANAGER_SANDBOX and tostring(vim.env.LAZYMANAGER_SANDBOX) == "1" then
+local getenv = vim and vim.env and function(k) return vim.env[k] end or os.getenv
+if (vim and vim.env and vim.env.LAZYMANAGER_SANDBOX and tostring(getenv("LAZYMANAGER_SANDBOX")) == "1") or (os.getenv and os.getenv("LAZYMANAGER_SANDBOX") == "1") then
 	is_sandbox = true
-elseif vim.fn.isdirectory(vim.fn.expand("~") .. "/nvim-lazy-manager-test") == 1 then
+elseif vim and vim.fn and vim.fn.isdirectory and vim.fn.isdirectory(vim.fn.expand("~") .. "/nvim-lazy-manager-test") == 1 then
 	is_sandbox = true
 end
 

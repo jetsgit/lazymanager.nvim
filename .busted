@@ -2,7 +2,8 @@ return {
 	default = {
 		ROOT = { "test/" },
 		pattern = "test_.*%.lua$",
-		lpath = "test/?.lua;test/?/init.lua", -- helps with require paths
+		-- lpath = "test/?.lua;test/?/init.lua", -- helps with require paths
+		lpath = "./lua/?.lua;./lua/?/init.lua;test/?.lua;test/?/init.lua",
 		verbose = true,
 	},
 }

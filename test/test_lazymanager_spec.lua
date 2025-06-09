@@ -5,7 +5,7 @@
 require("test.vim_mock")
 
 local stub = require("luassert.stub")
-local LazyManager = dofile("lua/lazymanager.lua")
+local LazyManager = require("lazymanager.lazymanager")
 
 describe("LazyManager", function()
 	-- backup_plugins
@@ -313,6 +313,90 @@ describe("LazyManager", function()
 			assert.equals("Select backup file", select_prompt)
 			assert.same({ "pluginA", "pluginB" }, restore_args)
 			assert.equals(selected_backup, restore_file)
+		end)
+	end)
+	-- Additional tests for refactored modules
+
+	describe("lazymanager.backup", function()
+		local Backup = require("lazymanager.backup")
+		it("should export backup_plugins and get_backup_dir", function()
+			assert.is_function(Backup.backup_plugins)
+			assert.is_function(Backup.get_backup_dir)
+		end)
+	end)
+
+	describe("lazymanager.git", function()
+		local git = require("lazymanager.git")
+		it("should export commit_exists, checkout_commit, fetch_all", function()
+			assert.is_function(git.commit_exists)
+			assert.is_function(git.checkout_commit)
+			assert.is_function(git.fetch_all)
+		end)
+		it("should call system for commit_exists", function()
+			local system = stub(vim.fn, "system")
+			vim.v.shell_error = 0
+			local ok = git.commit_exists("/tmp/plugindir", "abc123")
+			assert.stub(system).was_called()
+			system:revert()
+			assert.is_true(ok)
+		end)
+	end)
+
+	describe("lazymanager.ui", function()
+		local ui = require("lazymanager.ui")
+		it("should export input and select", function()
+			assert.is_function(ui.input)
+			assert.is_function(ui.select)
+		end)
+		it("should call vim.ui.input and vim.ui.select", function()
+			local input = stub(vim.ui, "input")
+			local select = stub(vim.ui, "select")
+			ui.input({ prompt = "test" }, function() end)
+			ui.select({ "a", "b" }, { prompt = "pick" }, function() end)
+			assert.stub(input).was_called()
+			assert.stub(select).was_called()
+			input:revert()
+			select:revert()
+		end)
+	end)
+
+	describe("lazymanager.paths", function()
+		local paths = require("lazymanager.paths")
+		it("should export get_backup_dir", function()
+			assert.is_function(paths.get_backup_dir)
+			assert.is_string(paths.get_backup_dir())
+		end)
+	end)
+
+	describe("lazymanager.utils.json", function()
+		local json = require("lazymanager.utils.json")
+		it("should pretty-print a table", function()
+			local t = { a = 1, b = 2 }
+			local s = json.pretty(t)
+			assert.is_truthy(s:find('"a"'))
+			assert.is_truthy(s:find('"b"'))
+		end)
+		it("should write and read a file (mocked)", function()
+			local orig_io_open = io.open
+			local orig_json_decode = vim.fn.json_decode
+			local file_content = "{\"foo\":1}"
+			local fake_file = {
+				read = function() return file_content end,
+				write = function() end,
+				close = function() end,
+			}
+			io.open = function(_, mode)
+				if mode == "r" then return fake_file end
+				if mode == "w" then return fake_file end
+				return nil
+			end
+			vim.fn.json_decode = function(str) return { foo = 1 } end
+			local ok, err = json.write_file("/tmp/test.json", { foo = 1 })
+			assert.is_true(ok)
+			local data, err = json.read_file("/tmp/test.json")
+			assert.same({ foo = 1 }, data)
+			io.open = orig_io_open
+			vim.fn.json_decode = orig_json_decode
 		end)
 	end)
 end)
