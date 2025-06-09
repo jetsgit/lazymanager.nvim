@@ -120,20 +120,6 @@ local function find_plugin_data(plugin_name)
 	return nil
 end
 
--- Helper: restore plugins from backup (iterates and restores)
-local function restore_plugins_from_backup(plugins_to_restore)
-	for _, plugin_info in ipairs(plugins_to_restore) do
-		local plugin_name = plugin_info.name
-		local target_version = plugin_info.version
-		local plugin_data = find_plugin_data(plugin_name)
-		if not plugin_data then
-			report_error("❌ Plugin not installed: " .. plugin_name)
-		else
-			restore_plugin(plugin_data, target_version)
-		end
-	end
-end
-
 -- Centralized error handler
 local function report_error(msg)
 	vim.api.nvim_err_writeln(msg)
@@ -172,7 +158,21 @@ local function restore_plugin(plugin_data, target_version)
 					.. plugin_name
 					.. " even after fetch. Commit may not exist: "
 					.. target_version:sub(1, 7)
-			)
+				)
+		end
+	end
+end
+
+-- Helper: restore plugins from backup (iterates and restores)
+local function restore_plugins_from_backup(plugins_to_restore)
+	for _, plugin_info in ipairs(plugins_to_restore) do
+		local plugin_name = plugin_info.name
+		local target_version = plugin_info.version
+		local plugin_data = find_plugin_data(plugin_name)
+		if not plugin_data then
+			report_error("❌ Plugin not installed: " .. plugin_name)
+		else
+			restore_plugin(plugin_data, target_version)
 		end
 	end
 end
