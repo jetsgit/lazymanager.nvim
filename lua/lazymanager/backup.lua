@@ -1,13 +1,21 @@
--- lua/lazymanager/backup.lua
--- lua/lazymanager/backup.lua
+--- Backup module for LazyManager.
+-- @module lazymanager.backup
+-- Handles plugin version backup creation and backup directory management.
+
 local M = {}
 local paths = require("lazymanager.paths")
 
+--- Generate a timestamped backup filename.
+-- @return string: The full path to the backup file.
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
 	return paths.get_backup_dir() .. date .. "-lazy-plugin-backup.json"
 end
 
+--- Pretty-print a Lua table as indented JSON.
+-- @param tbl table: The table to pretty-print.
+-- @param indent number: Indentation level (default 2).
+-- @return string: JSON string.
 local function json_pretty(tbl, indent)
 	indent = indent or 2
 	local function quote(str)
@@ -49,6 +57,7 @@ local function json_pretty(tbl, indent)
 end
 
 --- Backup all plugins and return the backup file path.
+-- @return string|nil: Path to backup file, or nil on error.
 function M.backup_plugins()
 	if vim.fn.isdirectory(paths.get_backup_dir()) == 0 then
 		vim.fn.mkdir(paths.get_backup_dir(), "p")
@@ -87,6 +96,8 @@ function M.backup_plugins()
 	end
 end
 
+--- Get the backup directory path.
+-- @return string: Path to backup directory.
 function M.get_backup_dir()
 	return paths.get_backup_dir()
 end
