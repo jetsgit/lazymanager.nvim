@@ -1,3 +1,11 @@
+--- LazyManager: Backup and restore Lazy.nvim plugin versions.
+-- @module lazymanager.lazymanager
+-- @author Jerry Thompson
+-- @license MIT
+--
+-- Provides commands for backing up and restoring plugin versions managed by Lazy.nvim.
+-- Features include timestamped backups, selective restore, tab completion, and integration with Telescope.
+
 local Backup = require("lazymanager.backup")
 local ui = require("lazymanager.ui")
 local git = require("lazymanager.git")
@@ -12,7 +20,8 @@ LazyManager.get_backup_dir = Backup.get_backup_dir
 -- Lazymanager-path
 -- local backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
 local backup_dir = LazyManager.get_backup_dir()
--- Generate timestamp-based backup filename
+--- Generate a timestamped backup filename.
+-- @return string: The full path to the backup file.
 local function get_backup_filename()
 	local date = os.date("%Y-%m-%d-%H%M")
 	return backup_dir .. date .. "-lazy-plugin-backup.json"
@@ -21,7 +30,10 @@ end
 -- Store most recent backup file path for restore function
 LazyManager.latest_backup_file = ""
 
--- Helper function to pretty-print a Lua table as indented JSON
+--- Pretty-print a Lua table as indented JSON.
+-- @param tbl table: The table to pretty-print.
+-- @param indent number: Indentation level (default 2).
+-- @return string: JSON string.
 local function json_pretty(tbl, indent)
 	indent = indent or 2
 	local function quote(str)
@@ -75,7 +87,10 @@ else
 	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
 end
 
--- Helper: resolve which backup file to use
+--- Resolve which backup file to use for restore.
+-- @param args table|nil: Plugin names (optional).
+-- @param backup_path string|nil: Specific backup file (optional).
+-- @return string|nil: Path to backup file, or nil if not found.
 local function resolve_backup_file(args, backup_path)
 	if vim.fn.isdirectory(backup_dir) == 0 then
 		vim.fn.mkdir(backup_dir, "p")
@@ -102,14 +117,18 @@ local function resolve_backup_file(args, backup_path)
 	end
 end
 
--- Helper: prompt user for confirmation
+--- Prompt user for confirmation before restoring plugins.
+-- @param prompt_msg string: The confirmation prompt.
+-- @param cb function: Callback receiving boolean (true if confirmed).
 local function confirm_restore(prompt_msg, cb)
 	ui.input({ prompt = prompt_msg }, function(input)
 		cb(input and input:lower() == "y")
 	end)
 end
 
--- Helper: find installed plugin data by name
+--- Find installed plugin data by name.
+-- @param plugin_name string: The plugin name.
+-- @return table|nil: Plugin data table or nil if not found.
 local function find_plugin_data(plugin_name)
 	local lazy = require("lazy")
 	for _, p in pairs(lazy.plugins()) do
@@ -120,12 +139,15 @@ local function find_plugin_data(plugin_name)
 	return nil
 end
 
--- Centralized error handler
+--- Print an error message to Neovim.
+-- @param msg string: The error message.
 local function report_error(msg)
 	vim.api.nvim_err_writeln(msg)
 end
 
--- Helper: restore a single plugin using git.lua
+--- Restore a single plugin to a specific commit.
+-- @param plugin_data table: Plugin data from Lazy.
+-- @param target_version string: Commit hash to restore.
 local function restore_plugin(plugin_data, target_version)
 	local plugin_name = plugin_data.name
 	local plugin_dir = plugin_data.dir
@@ -163,7 +185,8 @@ local function restore_plugin(plugin_data, target_version)
 	end
 end
 
--- Helper: restore plugins from backup (iterates and restores)
+--- Restore a list of plugins from backup data.
+-- @param plugins_to_restore table: List of {name, version} tables.
 local function restore_plugins_from_backup(plugins_to_restore)
 	for _, plugin_info in ipairs(plugins_to_restore) do
 		local plugin_name = plugin_info.name
@@ -177,7 +200,10 @@ local function restore_plugins_from_backup(plugins_to_restore)
 	end
 end
 
--- Helper: get plugins to restore
+--- Get plugins to restore from args and backup data.
+-- @param args table|nil: List of plugin names (optional).
+-- @param plugin_versions table: Map of plugin name to commit hash.
+-- @return table: List of {name, version} tables.
 local function get_plugins_to_restore(args, plugin_versions)
 	local plugins = {}
 	if not args or #args == 0 or (args and #args == 1 and args[1] == "") then
@@ -199,6 +225,9 @@ local function get_plugins_to_restore(args, plugin_versions)
 	return plugins
 end
 
+--- Restore plugins from a backup file.
+-- @param args table|nil: List of plugin names (optional).
+-- @param backup_path string|nil: Path to backup file (optional).
 function LazyManager.restore_plugins(args, backup_path)
 	local backup_to_use = resolve_backup_file(args, backup_path)
 	if not backup_to_use then
@@ -234,7 +263,7 @@ function LazyManager.restore_plugins(args, backup_path)
 	end)
 end
 
--- List available backups
+--- List all available backup files.
 function LazyManager.list_backups()
 	local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 	if #files == 0 then
@@ -253,6 +282,8 @@ function LazyManager.list_backups()
 	end
 end
 
+--- Telescope UI for selecting a backup file to restore.
+-- @param callback function|nil: Called with selected file.
 function LazyManager.telescope_restore(callback)
 	local ok, telescope = pcall(require, "telescope.builtin")
 	if not ok then
@@ -292,7 +323,10 @@ function LazyManager.telescope_restore(callback)
 	})
 end
 
--- Helper: parse command arguments and backup file
+--- Parse command input for arguments and backup file.
+-- @param input table: The input object from the user command.
+-- @return table args: List of plugin names.
+-- @return string|nil backup_file: The backup file name if specified.
 local function parse_args(input)
 	local args, backup_file = {}, nil
 	if input.args and input.args ~= "" then
@@ -304,7 +338,9 @@ local function parse_args(input)
 	return args, backup_file
 end
 
--- Helper: plugin name completion
+--- Complete plugin names for command-line completion.
+-- @param ArgLead string: The current argument prefix.
+-- @return table: List of matching plugin names.
 local function plugin_name_completions(ArgLead)
 	local lazy = require("lazy")
 	local completions = {}
@@ -317,7 +353,9 @@ local function plugin_name_completions(ArgLead)
 	return completions
 end
 
--- Helper: backup file completion
+--- Complete backup file names for command-line completion.
+-- @param ArgLead string: The current argument prefix.
+-- @return table: List of matching backup file names.
 local function backup_file_completions(ArgLead)
 	local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 	local completions = {}
@@ -330,6 +368,8 @@ local function backup_file_completions(ArgLead)
 	return completions
 end
 
+--- Setup all LazyManager user commands and autocommands.
+-- @param opts table|nil: Optional setup options.
 function LazyManager.setup(opts)
 	vim.api.nvim_create_user_command("LazyBackup", LazyManager.backup_plugins, {})
 
@@ -421,7 +461,8 @@ function LazyManager.setup(opts)
 	print("LazyManager setup complete!")
 end
 
--- Phase 2: Telescope picker for backups containing the selected plugin
+--- Telescope picker for backups containing the selected plugin.
+-- @param plugin_name string: The plugin name to search for in backups.
 function LazyManager.telescope_plugin_backups(plugin_name)
 	local files = vim.fn.glob(backup_dir .. "*.json", true, true)
 	if #files == 0 then
@@ -501,7 +542,8 @@ function LazyManager.telescope_plugin_backups(plugin_name)
 	end
 end
 
--- Restore all plugins from a specific backup file (no plugin filtering)
+--- Restore all plugins from a specific backup file (no plugin filtering).
+-- @param backup_path string: Path to the backup file.
 function LazyManager.restore_file_full(backup_path)
 	if not backup_path or backup_path == "" then
 		vim.api.nvim_err_writeln("❌ Please specify a backup file.")
