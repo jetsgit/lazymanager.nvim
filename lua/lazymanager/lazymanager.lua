@@ -292,19 +292,45 @@ function LazyManager.telescope_restore(callback)
 	})
 end
 
-function LazyManager.setup(opts)
-	-- Helper: parse command arguments and backup file
-	local function parse_args(input)
-		local args, backup_file = {}, nil
-		if input.args and input.args ~= "" then
-			args = vim.split(input.args, " ")
-			if #args > 0 and args[#args]:match("%.json$") then
-				backup_file = table.remove(args)
-			end
+-- Helper: parse command arguments and backup file
+local function parse_args(input)
+	local args, backup_file = {}, nil
+	if input.args and input.args ~= "" then
+		args = vim.split(input.args, " ")
+		if #args > 0 and args[#args]:match("%.json$") then
+			backup_file = table.remove(args)
 		end
-		return args, backup_file
 	end
+	return args, backup_file
+end
 
+-- Helper: plugin name completion
+local function plugin_name_completions(ArgLead)
+	local lazy = require("lazy")
+	local completions = {}
+	for _, plugin in pairs(lazy.plugins()) do
+		local name = plugin.name
+		if name and name:find(ArgLead, 1, true) == 1 then
+			table.insert(completions, name)
+		end
+	end
+	return completions
+end
+
+-- Helper: backup file completion
+local function backup_file_completions(ArgLead)
+	local files = vim.fn.glob(backup_dir .. "*.json", true, true)
+	local completions = {}
+	for _, file in ipairs(files) do
+		local basename = vim.fn.fnamemodify(file, ":t")
+		if basename:find(ArgLead, 1, true) == 1 then
+			table.insert(completions, basename)
+		end
+	end
+	return completions
+end
+
+function LazyManager.setup(opts)
 	vim.api.nvim_create_user_command("LazyBackup", LazyManager.backup_plugins, {})
 
 	vim.api.nvim_create_user_command("LazyRestore", function(input)
@@ -349,20 +375,9 @@ function LazyManager.setup(opts)
 	end, {
 		nargs = "*",
 		complete = function(ArgLead, CmdLine, CursorPos)
-			local lazy = require("lazy")
-			local completions = {}
-			for _, plugin in pairs(lazy.plugins()) do
-				local name = plugin.name
-				if name and name:find(ArgLead, 1, true) == 1 then
-					table.insert(completions, name)
-				end
-			end
-			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
-			for _, file in ipairs(files) do
-				local basename = vim.fn.fnamemodify(file, ":t")
-				if basename:find(ArgLead, 1, true) == 1 then
-					table.insert(completions, basename)
-				end
+			local completions = plugin_name_completions(ArgLead)
+			for _, file in ipairs(backup_file_completions(ArgLead)) do
+				table.insert(completions, file)
 			end
 			return completions
 		end,
@@ -390,15 +405,7 @@ function LazyManager.setup(opts)
 	end, {
 		nargs = "?",
 		complete = function(ArgLead, CmdLine, CursorPos)
-			local files = vim.fn.glob(backup_dir .. "*.json", true, true)
-			local completions = {}
-			for _, file in ipairs(files) do
-				local basename = vim.fn.fnamemodify(file, ":t")
-				if basename:find(ArgLead, 1, true) == 1 then
-					table.insert(completions, basename)
-				end
-			end
-			return completions
+			return backup_file_completions(ArgLead)
 		end,
 	})
 
