@@ -1,7 +1,13 @@
--- JSON utilities for LazyManager
+--- JSON utilities for LazyManager.
+-- @module lazymanager.utils.json
+-- Provides pretty-printing, file read, and file write helpers for JSON data.
+
 local M = {}
 
--- Helper function to pretty-print a Lua table as indented JSON
+--- Pretty-print a Lua table as indented JSON.
+-- @param tbl table: The table to pretty-print.
+-- @param indent number: Indentation level (default 2).
+-- @return string: JSON string.
 function M.pretty(tbl, indent)
 	indent = indent or 2
 	local function quote(str)
@@ -42,7 +48,9 @@ function M.pretty(tbl, indent)
 	return dump(tbl, 0)
 end
 
--- Read and parse a JSON file
+--- Read and parse a JSON file.
+-- @param file_path string: Path to the JSON file.
+-- @return table|nil, string|nil: Table if successful, or nil and error message.
 function M.read_file(file_path)
 	local file = io.open(file_path, "r")
 	if not file then
@@ -60,7 +68,11 @@ function M.read_file(file_path)
 	return data
 end
 
--- Write a table to a JSON file
+--- Write a table to a JSON file.
+-- @param file_path string: Path to the JSON file.
+-- @param data table: Table to write.
+-- @param indent number|nil: Indentation level (default 2).
+-- @return boolean, string|nil: True if successful, or false and error message.
 function M.write_file(file_path, data, indent)
 	local json = M.pretty(data, indent or 2)
 	local file = io.open(file_path, "w")

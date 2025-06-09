@@ -1,4 +1,7 @@
--- Lazymanager-path
+--- Path utilities for LazyManager.
+-- @module lazymanager.paths
+-- Handles backup directory resolution and sandbox detection.
+
 local M = {}
 
 -- Environment detection for sandbox
@@ -21,6 +24,8 @@ else
 	M.backup_dir = vim.fn.expand("~") .. "/.config/nvim/lazy-plugin-backups/"
 end
 
+--- Get the backup directory path.
+-- @return string: Path to backup directory.
 function M.get_backup_dir()
 	return M.backup_dir
 end

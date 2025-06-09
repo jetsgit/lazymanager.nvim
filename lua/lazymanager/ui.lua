@@ -1,7 +1,12 @@
--- UI helpers for LazyManager: Telescope pickers and input/select wrappers
+--- UI helpers for LazyManager.
+-- @module lazymanager.ui
+-- Provides Telescope pickers and wrappers for vim.ui.input/select.
+
 local M = {}
 
--- Telescope plugin picker
+--- Telescope plugin picker.
+-- @param plugins table: List of plugin names.
+-- @param on_select function: Callback with selected plugin name.
 function M.telescope_plugin_picker(plugins, on_select)
   local ok, telescope = pcall(require, "telescope.pickers")
   if not ok then
@@ -29,7 +34,10 @@ function M.telescope_plugin_picker(plugins, on_select)
   }):find()
 end
 
--- Telescope backup file picker
+--- Telescope backup file picker.
+-- @param files table: List of backup file paths.
+-- @param prompt string|nil: Prompt for the picker.
+-- @param on_select function: Callback with selected file path.
 function M.telescope_backup_picker(files, prompt, on_select)
   local ok, telescope = pcall(require, "telescope.pickers")
   if not ok then
@@ -70,12 +78,17 @@ function M.telescope_backup_picker(files, prompt, on_select)
   }):find()
 end
 
--- Input helper (wraps vim.ui.input)
+--- Input helper (wraps vim.ui.input).
+-- @param opts table: Options for input.
+-- @param on_confirm function: Callback with user input.
 function M.input(opts, on_confirm)
   vim.ui.input(opts, on_confirm)
 end
 
--- Select helper (wraps vim.ui.select)
+--- Select helper (wraps vim.ui.select).
+-- @param items table: List of items to select from.
+-- @param opts table: Options for select.
+-- @param on_choice function: Callback with selected item.
 function M.select(items, opts, on_choice)
   vim.ui.select(items, opts, on_choice)
 end
