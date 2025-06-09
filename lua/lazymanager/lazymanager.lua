@@ -102,8 +102,37 @@ local function resolve_backup_file(args, backup_path)
 	end
 end
 
--- Helper: prompt user for confirmation (moved to ui.lua)
--- Helper: restore a single plugin (moved to git.lua)
+-- Helper: prompt user for confirmation
+local function confirm_restore(prompt_msg, cb)
+	ui.input({ prompt = prompt_msg }, function(input)
+		cb(input and input:lower() == "y")
+	end)
+end
+
+-- Helper: find installed plugin data by name
+local function find_plugin_data(plugin_name)
+	local lazy = require("lazy")
+	for _, p in pairs(lazy.plugins()) do
+		if p.name == plugin_name then
+			return p
+		end
+	end
+	return nil
+end
+
+-- Helper: restore plugins from backup (iterates and restores)
+local function restore_plugins_from_backup(plugins_to_restore)
+	for _, plugin_info in ipairs(plugins_to_restore) do
+		local plugin_name = plugin_info.name
+		local target_version = plugin_info.version
+		local plugin_data = find_plugin_data(plugin_name)
+		if not plugin_data then
+			report_error("❌ Plugin not installed: " .. plugin_name)
+		else
+			restore_plugin(plugin_data, target_version)
+		end
+	end
+end
 
 -- Centralized error handler
 local function report_error(msg)
@@ -189,34 +218,18 @@ function LazyManager.restore_plugins(args, backup_path)
 	end
 	local backup_filename = vim.fn.fnamemodify(backup_to_use, ":t")
 	local prompt_msg = "Are you sure you want to restore plugins from " .. backup_filename .. "? (y/n): "
-	ui.input({ prompt = prompt_msg }, function(input)
-		if not input or input:lower() ~= "y" then
+	confirm_restore(prompt_msg, function(confirmed)
+		if not confirmed then
 			print("Restore canceled.")
 			return
 		end
-		local lazy = require("lazy")
 		local plugins_to_restore = get_plugins_to_restore(args, plugin_versions)
 		if not args or #args == 0 or (args and #args == 1 and args[1] == "") then
 			print("🔄 Restoring all " .. #plugins_to_restore .. " plugins from backup...")
 		else
 			print("🔄 Restoring " .. #plugins_to_restore .. " specified plugins...")
 		end
-		for _, plugin_info in ipairs(plugins_to_restore) do
-			local plugin_name = plugin_info.name
-			local target_version = plugin_info.version
-			local plugin_data = nil
-			for _, p in pairs(lazy.plugins()) do
-				if p.name == plugin_name then
-					plugin_data = p
-					break
-				end
-			end
-			if not plugin_data then
-				report_error("❌ Plugin not installed: " .. plugin_name)
-			else
-				restore_plugin(plugin_data, target_version)
-			end
-		end
+		restore_plugins_from_backup(plugins_to_restore)
 		print("🔄 Restart Neovim to ensure all changes take effect.")
 	end)
 end
