@@ -9,6 +9,7 @@
 local Backup = require("lazymanager.backup")
 local ui = require("lazymanager.ui")
 local git = require("lazymanager.git")
+local json_utils = require("lazymanager.utils.json")
 -- Define LazyManager as a module
 
 LazyManager = {}
@@ -30,62 +31,8 @@ end
 -- Store most recent backup file path for restore function
 LazyManager.latest_backup_file = ""
 
---- Pretty-print a Lua table as indented JSON.
--- @param tbl table: The table to pretty-print.
--- @param indent number: Indentation level (default 2).
--- @return string: JSON string.
-local function json_pretty(tbl, indent)
-	indent = indent or 2
-	local function quote(str)
-		return '"' .. tostring(str):gsub('"', '\\"') .. '"'
-	end
-	local function is_array(t)
-		local i = 0
-		for _ in pairs(t) do
-			i = i + 1
-			if t[i] == nil then
-				return false
-			end
-		end
-		return true
-	end
-	local function dump(t, level)
-		level = level or 0
-		local pad = string.rep(" ", level * indent)
-		if type(t) ~= "table" then
-			if type(t) == "string" then
-				return quote(t)
-			else
-				return tostring(t)
-			end
-		end
-		local isarr = is_array(t)
-		local items = {}
-		for k, v in pairs(t) do
-			local key = isarr and "" or (quote(k) .. ": ")
-			table.insert(items, pad .. string.rep(" ", indent) .. key .. dump(v, level + 1))
-		end
-		if isarr then
-			return "[\n" .. table.concat(items, ",\n") .. "\n" .. pad .. "]"
-		else
-			return "{\n" .. table.concat(items, ",\n") .. "\n" .. pad .. "}"
-		end
-	end
-	return dump(tbl, 0)
-end
-
 -- Use timestamped backup file
 LazyManager.latest_backup_file = get_backup_filename()
-local json = json_pretty(plugin_versions, 2)
-local file = io.open(LazyManager.latest_backup_file, "w")
-
-if file then
-	file:write(json)
-	file:close()
-	print("✅ Plugins backed up to: " .. LazyManager.latest_backup_file)
-else
-	vim.api.nvim_err_writeln("❌ Error: Could not create backup file.")
-end
 
 --- Resolve which backup file to use for restore.
 -- @param args table|nil: Plugin names (optional).
@@ -180,7 +127,7 @@ local function restore_plugin(plugin_data, target_version)
 					.. plugin_name
 					.. " even after fetch. Commit may not exist: "
 					.. target_version:sub(1, 7)
-				)
+			)
 		end
 	end
 end
@@ -404,7 +351,9 @@ function LazyManager.setup(opts)
 				vim.api.nvim_err_writeln("❌ No backups found in " .. backup_dir)
 				return
 			end
-			table.sort(files, function(a, b) return a > b end)
+			table.sort(files, function(a, b)
+				return a > b
+			end)
 			ui.telescope_backup_picker(files, "Select backup file", function(selected_backup)
 				if selected_backup then
 					LazyManager.restore_plugins(args, selected_backup)
