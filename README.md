@@ -2,6 +2,8 @@
 
 A Neovim plugin for backing up and restoring Lazy.nvim plugin versions. LazyManager creates timestamped backups of your plugin commit hashes and allows you to restore specific plugins or your entire plugin set to previous versions.
 
+This is an experimental plugin. It is designed to be used when you are having compatibility issues with plugins and need to restore a previous version of a plugin or your entire plugin set. It is not intended to be used as a general-purpose plugin manager. If you revert to an earlier version of a plugin, you may need to manually resolve any compatibility issues that arise. Basically you will need to pin the plugin to a specific commit or version in your Lazy.nvim configuration, otherwise Lazy.nim will  complain that the plugin has been modifieand refuse to update or sync. Reverting to an entire backup version has not been tested, but should work as expected. You may wish to try this on a brancy or in the sandbox first.
+
 ## Features
 
 - **Automatic Backups**: Automatically backs up plugin versions after every `:Lazy sync`
@@ -74,7 +76,6 @@ vim.keymap.set('n', '<leader>lr', '<cmd>LazyRestore<cr>', { desc = 'Restore plug
 vim.keymap.set('n', '<leader>ll', '<cmd>LazyListBackups<cr>', { desc = 'List backups' })
 vim.keymap.set('n', '<leader>la', '<cmd>LazyRestoreFile<cr>', { desc = 'Restore entire backup file' })
 ```
-...more, better, faster, stronger, and powerful than ever before!
 
 ### Backup Directory
 
