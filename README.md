@@ -105,18 +105,22 @@ Restores plugins from backups with flexible syntax options:
 
 ```vim
 " Restore all plugins from the most recent backup
+```vim
 :LazyRestore
-
-" Restore specific plugins from the most recent backup
+```
+Restore specific plugins from the most recent backup
+```vim
 :LazyRestore telescope.nvim nvim-treesitter
-
-" Restore all plugins from a specific backup file
+```
+Restore all plugins from a specific backup file
+```vim
 :LazyRestore 2024-01-15-1430-lazy-plugin-backup.json
 
-" Restore specific plugins from a specific backup file
+```
+Restore specific plugins from a specific backup file
+```vim
 :LazyRestore telescope.nvim 2024-01-15-1430-lazy-plugin-backup.json
 ```
-
 **Features**:
 - Tab completion for plugin names and backup files
 - User confirmation prompt before restoration
@@ -142,6 +146,15 @@ Alternative restore command:
 ```vim
 " Restore all plugins from specified backup
 :LazyRestoreFile 2024-01-15-1430-lazy-plugin-backup.json
+```
+### `:LazyDebugPaths`
+
+Prints out all sandbox paths and confirms you are using the sandbox paths.
+In sandbox confirm that you are using sandbox paths
+
+```vim
+"Used in the sandbox to confirm paths
+:LazyDebugPaths
 ```
 
 ## How It Works
